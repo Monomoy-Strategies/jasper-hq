@@ -35,7 +35,7 @@ export async function getUpcomingEvents(limit = 10): Promise<CalendarEventSummar
     return []
   }
 
-  return (data || []).map(event => ({
+  return (data || []).map((event: any) => ({
     id: event.id,
     title: event.title,
     startTime: new Date(event.start_time),
@@ -64,7 +64,7 @@ export async function getTodaysEvents(): Promise<CalendarEventSummary[]> {
     return []
   }
 
-  return (data || []).map(event => ({
+  return (data || []).map((event: any) => ({
     id: event.id,
     title: event.title,
     startTime: new Date(event.start_time),
@@ -102,7 +102,7 @@ export async function getAgentTasks(): Promise<AgentTask[]> {
       return []
     }
 
-    return (todoData || []).map(todo => ({
+    return (todoData || []).map((todo: any) => ({
       id: todo.id,
       user_id: todo.user_id,
       title: todo.title,
@@ -177,7 +177,7 @@ export async function getAgentProjects(): Promise<AgentProject[]> {
   }
 
   // Transform the data to match AgentProject interface
-  return (data || []).map(project => ({
+  return (data || []).map((project: any) => ({
     id: project.id,
     user_id: project.user_id,
     name: project.name,
@@ -214,7 +214,7 @@ export async function getAgentDeliverables(limit = 10): Promise<AgentDeliverable
     return []
   }
 
-  return (data || []).map(activity => ({
+  return (data || []).map((activity: any) => ({
     id: activity.id,
     user_id: activity.user_id,
     title: activity.title,
