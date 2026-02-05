@@ -39,7 +39,8 @@ export function DashboardLayout({ children, data, status = 'working' }: Dashboar
     thinking: { label: 'Thinking', class: 'bg-purple-900/20 text-purple-300 border-purple-500/30' }
   }
   
-  const currentStatus = statusConfig[data?.status?.status || status] || statusConfig.working
+  const statusKey = (data?.status?.status || status) as keyof typeof statusConfig
+  const currentStatus = statusConfig[statusKey] || statusConfig.working
 
   return (
     <DashboardContext.Provider value={data || { status: {}, tasks: [], activities: [], documents: [], projects: [], calendar: [], ideas: [] }}>
