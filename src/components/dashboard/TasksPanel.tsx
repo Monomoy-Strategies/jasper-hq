@@ -1,179 +1,100 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { 
-  Kanban,
-  Plus,
-  Clock,
-  User,
-  Bot,
-  Settings
-} from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import type { AgentTask } from '@/types'
-import { taskStatusColors, priorityColors } from '@/types'
-import { getAgentTasks } from '@/services/dashboardService'
+import { ListTodo, Plus, CheckCircle2, Circle, Clock } from 'lucide-react'
 
 interface TasksPanelProps {
-  limit?: number
+  tasks?: any[]
 }
 
-const statusLabels = {
-  todo: 'To Do',
-  in_progress: 'In Progress', 
-  done: 'Done',
-  archive: 'Archive'
-}
-
-const assignedByIcons = {
-  user: User,
-  agent: Bot,
-  system: Settings,
-}
-
-export function TasksPanel({ limit = 20 }: TasksPanelProps) {
-  const [tasks, setTasks] = useState<AgentTask[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadTasks()
-  }, [])
-
-  const loadTasks = async () => {
-    try {
-      setLoading(true)
-      const taskData = await getAgentTasks()
-      setTasks(taskData.slice(0, limit))
-    } catch (error) {
-      console.error('Error loading tasks:', error)
-    } finally {
-      setLoading(false)
-    }
+function mapStatus(status: string): string {
+  switch (status) {
+    case 'done': case 'completed': return 'done'
+    case 'in-progress': case 'in_progress': return 'in_progress'
+    default: return 'todo'
   }
+}
 
-  const tasksByStatus = tasks.reduce((acc, task) => {
-    if (!acc[task.status]) acc[task.status] = []
-    acc[task.status].push(task)
-    return acc
-  }, {} as Record<string, AgentTask[]>)
-
-  if (loading) {
-    return (
-      <Card className="border border-slate-700/50 bg-slate-800/50 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Kanban className="h-5 w-5 text-amber-400" />
-            Tasks
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 bg-slate-700/30" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+export function TasksPanel({ tasks = [] }: TasksPanelProps) {
+  const todo = tasks.filter(t => mapStatus(t.status) === 'todo')
+  const inProgress = tasks.filter(t => mapStatus(t.status) === 'in_progress')
+  const done = tasks.filter(t => mapStatus(t.status) === 'done')
 
   return (
-    <Card className="border border-slate-700/50 bg-slate-800/50 backdrop-blur">
+    <Card className="border border-slate-700/50 bg-slate-800/50 backdrop-blur h-96 overflow-y-auto">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
-            <Kanban className="h-5 w-5 text-amber-400" />
+            <ListTodo className="h-5 w-5 text-amber-400" />
             Tasks
             <Badge className="bg-slate-700/50 text-slate-300">{tasks.length}</Badge>
           </CardTitle>
-          <Button size="sm" variant="ghost" className="text-slate-300 hover:text-white hover:bg-slate-700/50">
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-4">
-          {Object.entries(statusLabels).map(([status, label]) => {
-            const statusTasks = tasksByStatus[status] || []
-            
-            return (
-              <div key={status} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-slate-300">{label}</h4>
-                  <Badge className={`text-xs ${taskStatusColors[status as keyof typeof taskStatusColors]}`}>
-                    {statusTasks.length}
-                  </Badge>
-                </div>
-                
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {statusTasks.length === 0 ? (
-                    <div className="text-center py-4 text-slate-400 text-sm">
-                      No {label.toLowerCase()} tasks
-                    </div>
-                  ) : (
-                    statusTasks.map(task => <TaskCard key={task.id} task={task} />)
-                  )}
-                </div>
+          {/* To Do */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-300">To Do</span>
+              <Badge className="bg-slate-700/50 text-slate-300 text-xs">{todo.length}</Badge>
+            </div>
+            {todo.length > 0 ? (
+              <div className="space-y-1">
+                {todo.map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-2 p-2 rounded bg-slate-700/20">
+                    <Circle className="h-4 w-4 text-slate-400 shrink-0" />
+                    <span className="text-sm text-white line-clamp-1">{task.title}</span>
+                  </div>
+                ))}
               </div>
-            )
-          })}
+            ) : (
+              <p className="text-xs text-slate-500 pl-2">No to do tasks</p>
+            )}
+          </div>
+
+          {/* In Progress */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-300">In Progress</span>
+              <Badge className="bg-blue-900/20 text-blue-300 text-xs">{inProgress.length}</Badge>
+            </div>
+            {inProgress.length > 0 ? (
+              <div className="space-y-1">
+                {inProgress.map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-2 p-2 rounded bg-blue-900/10 border border-blue-500/10">
+                    <Clock className="h-4 w-4 text-blue-400 shrink-0" />
+                    <span className="text-sm text-white line-clamp-1">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 pl-2">No in progress tasks</p>
+            )}
+          </div>
+
+          {/* Done */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-emerald-300">Done</span>
+              <Badge className="bg-emerald-900/20 text-emerald-300 text-xs">{done.length}</Badge>
+            </div>
+            {done.length > 0 ? (
+              <div className="space-y-1">
+                {done.map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-2 p-2 rounded bg-emerald-900/10">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span className="text-sm text-slate-300 line-clamp-1 line-through">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 pl-2">No done tasks</p>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function TaskCard({ task }: { task: AgentTask }) {
-  const AssignedByIcon = assignedByIcons[task.assigned_by]
-  
-  return (
-    <div className="p-3 bg-slate-700/30 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-colors">
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h5 className="text-sm font-medium text-white line-clamp-2">{task.title}</h5>
-          <Badge className={`text-xs shrink-0 ${priorityColors[task.priority]}`}>
-            {task.priority}
-          </Badge>
-        </div>
-        
-        {task.notes && (
-          <p className="text-xs text-slate-400 line-clamp-2">{task.notes}</p>
-        )}
-        
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1 text-slate-400">
-            <AssignedByIcon className="h-3 w-3" />
-            <span>{task.assigned_by}</span>
-          </div>
-          
-          <div className="flex items-center gap-1 text-slate-400">
-            <Clock className="h-3 w-3" />
-            <span>{formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</span>
-          </div>
-        </div>
-        
-        {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {task.tags.slice(0, 3).map(tag => (
-              <Badge 
-                key={tag} 
-                className="text-xs bg-slate-600/30 text-slate-300 hover:bg-slate-600/50"
-              >
-                {tag}
-              </Badge>
-            ))}
-            {task.tags.length > 3 && (
-              <Badge className="text-xs bg-slate-600/30 text-slate-300">
-                +{task.tags.length - 3}
-              </Badge>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   )
 }
