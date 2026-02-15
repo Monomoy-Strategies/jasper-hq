@@ -6,6 +6,7 @@ import { LiveStatusWidget } from '@/components/dashboard/LiveStatusWidget'
 import { QuickNoteInput } from '@/components/dashboard/QuickNoteInput'
 import { TasksPanel } from '@/components/dashboard/TasksPanel'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { AIBoardPanel } from '@/components/dashboard/AIBoardPanel'
 
 interface DashboardData {
   status: any
@@ -99,6 +100,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* AI Board of Directors */}
+        <AIBoardPanel documents={data?.documents || []} />
 
         {/* Third Row - Ideas + Docs + Calendar + System + Workflows */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
