@@ -1,4 +1,5 @@
 export { DashboardTab } from './DashboardTab'
+export { SecurityTab } from './SecurityTab'
 export { TasksTab } from './TasksTab'
 export { ProjectsTab } from './ProjectsTab'
 export { AIBoardTab } from './AIBoardTab'

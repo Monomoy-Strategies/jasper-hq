@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { TabId } from '@/components/dashboard/TabBar'
 import {
   DashboardTab,
+  SecurityTab,
   TasksTab,
   ProjectsTab,
   AIBoardTab,
@@ -64,6 +65,8 @@ export default function Home() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab data={data || {}} />
+      case 'security':
+        return <SecurityTab />
       case 'tasks':
         return <TasksTab tasks={data?.tasks || []} />
       case 'projects':
