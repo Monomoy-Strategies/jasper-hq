@@ -26,13 +26,14 @@ export async function GET() {
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString()
     const weekEnd = new Date(now.getTime() + 7 * 86400000).toISOString()
 
-    const [tasksRes, activitiesRes, docsRes, projectsRes, calendarTodayRes, calendarWeekRes] = await Promise.all([
+    const [tasksRes, activitiesRes, docsRes, projectsRes, calendarTodayRes, calendarWeekRes, securityRes] = await Promise.all([
       supabase.from('agent_tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
       supabase.from('agent_activities').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
       supabase.from('agent_documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
       supabase.from('vault_projects').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
       supabase.from('calendar_events').select('*').eq('user_id', userId).gte('start_time', todayStart).lt('start_time', todayEnd).order('start_time', { ascending: true }),
       supabase.from('calendar_events').select('*').eq('user_id', userId).gte('start_time', todayStart).lte('start_time', weekEnd).order('start_time', { ascending: true }).limit(20),
+      supabase.from('security_status').select('data').eq('machine_id', 'monomoy-1').single(),
     ])
 
     const tasks = tasksRes.data || []
@@ -41,17 +42,25 @@ export async function GET() {
     const projects = projectsRes.data || []
     const calendarToday = calendarTodayRes.data || []
     const calendarWeek = calendarWeekRes.data || []
+    const securityData = securityRes.data?.data || {}
     
     // Separate ideas from documents
     const ideas = documents.filter((d: any) => d.tags?.includes('idea') || d.category === 'planning')
     const docs = documents.filter((d: any) => !d.tags?.includes('idea') && d.category !== 'planning')
 
+    // Extract context window usage from security collector data
+    const contextUsage = securityData?.context ? {
+      used: securityData.context.used || 0,
+      total: securityData.context.total || 0,
+    } : null
+
     return NextResponse.json({
       status: {
-        model: 'Claude Opus 4.5',
-        channel: 'telegram',
+        model: securityData?.system?.model || 'Claude Opus 4.6',
+        channel: securityData?.system?.channel || 'discord',
         status: 'working',
         currentTask: tasks.find((t: any) => t.status === 'in_progress')?.title || 'Monitoring systems',
+        contextUsage,
       },
       tasks,
       activities,

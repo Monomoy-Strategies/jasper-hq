@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Bot, Loader2, Clock } from 'lucide-react'
+import { Loader2, Clock } from 'lucide-react'
 
 const statusConfig = {
   idle: {
@@ -32,28 +33,58 @@ const channelLabels: Record<string, string> = {
   web: '🌐 Web',
 }
 
+interface ContextUsage {
+  used: number
+  total: number
+}
+
 interface LiveStatusWidgetProps {
   model?: string
   channel?: string
   currentTask?: string
   status?: 'idle' | 'working' | 'thinking'
+  contextUsage?: ContextUsage | null
+}
+
+function formatTokenCount(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+  if (n >= 1000) return `${Math.round(n / 1000)}k`
+  return String(n)
+}
+
+function getContextColor(pct: number): { bar: string; text: string } {
+  if (pct >= 80) return { bar: 'bg-red-500', text: 'text-red-400' }
+  if (pct >= 50) return { bar: 'bg-amber-500', text: 'text-amber-400' }
+  return { bar: 'bg-emerald-500', text: 'text-emerald-400' }
 }
 
 export function LiveStatusWidget({ 
   model = 'Claude Opus 4.5',
   channel = 'telegram',
   currentTask = 'Monitoring systems',
-  status = 'working'
+  status = 'working',
+  contextUsage = null,
 }: LiveStatusWidgetProps) {
   const config = statusConfig[status] || statusConfig.working
   const StatusIcon = config.icon
+
+  const contextPct = contextUsage && contextUsage.total > 0
+    ? Math.round((contextUsage.used / contextUsage.total) * 100)
+    : null
+  const contextColor = contextPct !== null ? getContextColor(contextPct) : null
 
   return (
     <Card className="border border-slate-700/50 bg-slate-800/50 backdrop-blur">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Bot className="h-5 w-5 text-amber-400" />
+          <CardTitle className="flex items-center gap-3 text-white">
+            <Image
+              src="/jasper-avatar.jpg"
+              alt="Jasper"
+              width={40}
+              height={40}
+              className="rounded-full ring-2 ring-amber-400/50"
+            />
             Jasper
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -78,6 +109,24 @@ export function LiveStatusWidget({
             <span className="text-slate-400">Channel:</span>
             <span className="font-medium text-white">{channelLabels[channel] || channel}</span>
           </div>
+
+          {/* Context Window */}
+          {contextPct !== null && contextUsage && contextColor && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Context:</span>
+                <span className={`font-medium ${contextColor.text}`}>
+                  {formatTokenCount(contextUsage.used)}/{formatTokenCount(contextUsage.total)} ({contextPct}%)
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${contextColor.bar}`}
+                  style={{ width: `${Math.min(contextPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Current Task */}
           {currentTask && (

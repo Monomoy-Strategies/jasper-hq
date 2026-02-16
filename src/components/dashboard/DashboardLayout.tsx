@@ -1,8 +1,8 @@
 'use client'
 
 import { ReactNode, createContext, useContext } from 'react'
+import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TabBar, TabId } from './TabBar'
 
 interface DashboardData {
@@ -58,7 +58,13 @@ export function DashboardLayout({
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🦞</span>
+                <Image
+                  src="/jasper-avatar.jpg"
+                  alt="Jasper"
+                  width={44}
+                  height={44}
+                  className="rounded-full ring-2 ring-amber-400/60"
+                />
                 <div>
                   <h1 className="text-2xl font-bold text-white">Jasper HQ</h1>
                   <p className="text-sm text-slate-400">Command Center</p>
@@ -72,11 +78,6 @@ export function DashboardLayout({
                 >
                   Status: {currentStatus.label}
                 </Badge>
-                <Avatar>
-                  <AvatarFallback className="bg-slate-700 text-white">
-                    B
-                  </AvatarFallback>
-                </Avatar>
               </div>
             </div>
           </div>

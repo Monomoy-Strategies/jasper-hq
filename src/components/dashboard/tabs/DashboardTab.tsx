@@ -25,6 +25,7 @@ export function DashboardTab({ data }: DashboardTabProps) {
           channel={data?.status?.channel || 'discord'}
           currentTask={data?.status?.currentTask}
           status={data?.status?.status || 'working'}
+          contextUsage={data?.status?.contextUsage || null}
         />
 
         {/* System */}
