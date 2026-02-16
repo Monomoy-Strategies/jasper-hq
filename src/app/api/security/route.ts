@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 export interface SecurityData {
   system: {
@@ -49,9 +50,14 @@ export interface SecurityData {
     diskEncryption: string
     credentialReview: string
   }
+  _meta?: {
+    source: 'live' | 'mock'
+    lastUpdate: string
+    machineId: string
+  }
 }
 
-// Mock data - will be replaced with real system checks later
+// Mock data - fallback when Supabase is unavailable
 const mockSecurityData: SecurityData = {
   system: {
     openclawVersion: '2026.2.15',
@@ -124,13 +130,58 @@ const mockSecurityData: SecurityData = {
   },
 }
 
-export async function GET() {
-  // TODO: Replace with real system checks:
-  // - openclaw security audit
-  // - openclaw gateway status
-  // - Service health checks
-  // - Windows Defender status via PowerShell
-  // - Windows Update status
+// Create Supabase client with service role for server-side reads
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
-  return NextResponse.json(mockSecurityData)
+  if (!supabaseUrl || !serviceKey) {
+    console.warn('Supabase credentials not configured')
+    return null
+  }
+  
+  return createClient(supabaseUrl, serviceKey)
+}
+
+export async function GET() {
+  const supabase = getSupabaseClient()
+  
+  if (supabase) {
+    try {
+      // Fetch from security_status table
+      const { data, error } = await supabase
+        .from('security_status')
+        .select('data, updated_at')
+        .eq('machine_id', 'monomoy-1')
+        .single()
+      
+      if (error) {
+        console.error('Supabase fetch error:', error.message)
+        // Fall through to mock data
+      } else if (data?.data) {
+        // Return live data with metadata
+        const securityData = data.data as SecurityData
+        securityData._meta = {
+          source: 'live',
+          lastUpdate: data.updated_at,
+          machineId: 'monomoy-1'
+        }
+        return NextResponse.json(securityData)
+      }
+    } catch (err) {
+      console.error('Supabase connection error:', err)
+    }
+  }
+  
+  // Fallback to mock data
+  const response = { 
+    ...mockSecurityData,
+    _meta: {
+      source: 'mock' as const,
+      lastUpdate: new Date().toISOString(),
+      machineId: 'mock'
+    }
+  }
+  
+  return NextResponse.json(response)
 }
