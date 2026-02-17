@@ -2,16 +2,43 @@
 
 import { useState, useEffect } from 'react'
 
+interface SessionContext {
+  used: number
+  total: number
+  pct: number
+  model: string
+}
+
+interface SessionEntry {
+  key: string
+  label: string
+  kind: string
+  age: string
+  model: string
+  used: number
+  total: number
+  pct: number
+}
+
 interface SecurityData {
   system: {
     openclawVersion: string
     latestVersion: string
     updateAvailable: boolean
     criticalUpdate?: boolean
+    model?: string
+    channel?: string
     nodeVersion: string
     os: string
     uptime: string
     lastUpdate: string
+  }
+  context: {
+    used: number
+    total: number
+    discord?: SessionContext | null
+    main?: SessionContext | null
+    sessions?: SessionEntry[]
   }
   audit: {
     overall: 'green' | 'yellow' | 'red'
@@ -343,6 +370,144 @@ export function SecurityTab() {
           </div>
         </div>
       </div>
+
+      {/* Context Window Usage */}
+      {data.context && (
+        <div className="border border-slate-700/50 bg-slate-800/50 backdrop-blur rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-lg">🧠</span>
+            <h4 className="font-semibold text-white text-base">Context Window Usage</h4>
+            <span className="text-xs text-slate-500 ml-auto">Updates every 15 min</span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Discord Session */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">💬</span>
+                <span className="text-white font-medium text-sm">Discord #jasper</span>
+                {data.context.discord && (
+                  <span className="text-xs text-slate-500 ml-auto font-mono">
+                    {data.context.discord.model}
+                  </span>
+                )}
+              </div>
+              {data.context.discord ? (
+                <>
+                  <div className="w-full bg-slate-700/50 rounded-full h-4 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        data.context.discord.pct >= 85 ? 'bg-red-500' :
+                        data.context.discord.pct >= 60 ? 'bg-yellow-500' :
+                        'bg-emerald-500'
+                      }`}
+                      style={{ width: `${data.context.discord.pct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={`font-bold ${
+                      data.context.discord.pct >= 85 ? 'text-red-400' :
+                      data.context.discord.pct >= 60 ? 'text-yellow-400' :
+                      'text-emerald-400'
+                    }`}>
+                      {(data.context.discord.used / 1000).toFixed(0)}k / {(data.context.discord.total / 1000).toFixed(0)}k ({data.context.discord.pct}%)
+                    </span>
+                    <span className="text-slate-500">
+                      {((data.context.discord.total - data.context.discord.used) / 1000).toFixed(0)}k remaining
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-slate-500 text-xs italic">No active Discord session</p>
+              )}
+            </div>
+
+            {/* Main/Telegram Session */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📱</span>
+                <span className="text-white font-medium text-sm">Main (Telegram)</span>
+                {data.context.main && (
+                  <span className="text-xs text-slate-500 ml-auto font-mono">
+                    {data.context.main.model}
+                  </span>
+                )}
+              </div>
+              {data.context.main ? (
+                <>
+                  <div className="w-full bg-slate-700/50 rounded-full h-4 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        data.context.main.pct >= 85 ? 'bg-red-500' :
+                        data.context.main.pct >= 60 ? 'bg-yellow-500' :
+                        'bg-emerald-500'
+                      }`}
+                      style={{ width: `${data.context.main.pct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={`font-bold ${
+                      data.context.main.pct >= 85 ? 'text-red-400' :
+                      data.context.main.pct >= 60 ? 'text-yellow-400' :
+                      'text-emerald-400'
+                    }`}>
+                      {(data.context.main.used / 1000).toFixed(0)}k / {(data.context.main.total / 1000).toFixed(0)}k ({data.context.main.pct}%)
+                    </span>
+                    <span className="text-slate-500">
+                      {((data.context.main.total - data.context.main.used) / 1000).toFixed(0)}k remaining
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-slate-500 text-xs italic">No active main session</p>
+              )}
+            </div>
+          </div>
+
+          {/* All Sessions Table */}
+          {data.context.sessions && data.context.sessions.length > 0 && (
+            <details className="mt-4">
+              <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
+                Show all {data.context.sessions.length} active sessions
+              </summary>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-slate-500 border-b border-slate-700/50">
+                      <th className="text-left py-2 pr-4">Session</th>
+                      <th className="text-left py-2 pr-4">Kind</th>
+                      <th className="text-left py-2 pr-4">Age</th>
+                      <th className="text-left py-2 pr-4">Model</th>
+                      <th className="text-right py-2">Context</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.context.sessions.map((session, idx) => (
+                      <tr key={idx} className="border-b border-slate-700/20">
+                        <td className="py-2 pr-4 text-white font-mono truncate max-w-[200px]" title={session.key}>
+                          {session.label}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-400">{session.kind}</td>
+                        <td className="py-2 pr-4 text-slate-400">{session.age}</td>
+                        <td className="py-2 pr-4 text-slate-400 font-mono">{session.model}</td>
+                        <td className="py-2 text-right">
+                          <span className={`font-bold ${
+                            session.pct >= 85 ? 'text-red-400' :
+                            session.pct >= 60 ? 'text-yellow-400' :
+                            'text-emerald-400'
+                          }`}>
+                            {(session.used / 1000).toFixed(0)}k/{(session.total / 1000).toFixed(0)}k ({session.pct}%)
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Middle Row — Full Width: Service Health */}
       <div className="border border-slate-700/50 bg-slate-800/50 backdrop-blur rounded-xl p-6">

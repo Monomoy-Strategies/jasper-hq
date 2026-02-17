@@ -1,6 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+interface SessionContext {
+  used: number
+  total: number
+  pct: number
+  model: string
+}
+
+interface SessionEntry {
+  key: string
+  label: string
+  kind: string
+  age: string
+  model: string
+  used: number
+  total: number
+  pct: number
+}
+
 export interface SecurityData {
   system: {
     openclawVersion: string
@@ -11,6 +29,13 @@ export interface SecurityData {
     os: string
     uptime: string
     lastUpdate: string
+  }
+  context?: {
+    used: number
+    total: number
+    discord?: SessionContext | null
+    main?: SessionContext | null
+    sessions?: SessionEntry[]
   }
   audit: {
     overall: 'green' | 'yellow' | 'red'
@@ -67,6 +92,54 @@ const mockSecurityData: SecurityData = {
     os: 'Windows 10.0.26100 (x64)',
     uptime: '2h 15m',
     lastUpdate: '2026-02-16T08:40:00Z',
+  },
+  context: {
+    used: 45000,
+    total: 200000,
+    discord: {
+      used: 32000,
+      total: 200000,
+      pct: 16,
+      model: 'claude-opus-4-6',
+    },
+    main: {
+      used: 78000,
+      total: 200000,
+      pct: 39,
+      model: 'claude-opus-4-6',
+    },
+    sessions: [
+      {
+        key: 'discord:channel:1470088457178054677',
+        label: 'Discord #jasper',
+        kind: 'channel',
+        age: '45m',
+        model: 'claude-opus-4-6',
+        used: 32000,
+        total: 200000,
+        pct: 16,
+      },
+      {
+        key: 'telegram:user:123456',
+        label: 'Main (Telegram)',
+        kind: 'user',
+        age: '2h',
+        model: 'claude-opus-4-6',
+        used: 78000,
+        total: 200000,
+        pct: 39,
+      },
+      {
+        key: 'subagent:jasper-hq-context-bars',
+        label: 'Subagent: jasper-hq',
+        kind: 'subagent',
+        age: '5m',
+        model: 'claude-opus-4-6',
+        used: 12000,
+        total: 200000,
+        pct: 6,
+      },
+    ],
   },
   audit: {
     overall: 'green',
