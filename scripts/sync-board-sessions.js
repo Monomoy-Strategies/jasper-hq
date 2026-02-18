@@ -18,7 +18,7 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cymfsifrjcisncnzywbd.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 
     process.env.SUPABASE_SERVICE_ROLE_KEY || 
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5bWZzaWZyamNpc25jbnp5d2JkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ1Mzk1NiwiZXhwIjoyMDc2MDI5OTU2fQ.wPTBKN81-E-xWVyg5Y7aNSj8RMsojaXvTHs54qmwpeE';
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const USER_ID = process.env.USER_ID || '1cfef549-ae52-4824-808b-7bfafb303adc';
 const BOARD_SESSIONS_DIR = process.env.BOARD_SESSIONS_DIR || path.join(__dirname, '../../projects');
 
