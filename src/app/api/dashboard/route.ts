@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || ''
-const userId = process.env.USER_ID || ''
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const userId = process.env.USER_ID || process.env.NEXT_PUBLIC_USER_ID || ''
 
 function getServerClient() {
   if (!supabaseUrl || !supabaseKey) return null

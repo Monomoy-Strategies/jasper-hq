@@ -1,6 +1,53 @@
 // Jasper HQ Types - Adapted from Vortxx Agent Dashboard
 
 // =====================================================
+// AI Board Types
+// =====================================================
+
+export interface BoardSessionMember {
+  seat: string
+  name: string
+  focus?: string
+  status: 'waiting' | 'thinking' | 'researching' | 'completed' | 'ruled_out' | 'possible'
+  theories: string[]
+  recommendations: string[]
+}
+
+export interface BoardSessionContent {
+  topic: string
+  status: 'active' | 'in_progress' | 'completed' | 'cancelled'
+  called_by: string | null
+  attendees: { seat: string; name: string }[]
+  members: BoardSessionMember[]
+  key_insights: string[]
+  action_items: { text: string; completed: boolean }[]
+  synthesis: string | null
+  date: string | null
+  file_path: string
+}
+
+export interface BoardSession {
+  id: string
+  user_id: string
+  title: string
+  content: string // JSON string of BoardSessionContent
+  doc_type: string
+  category: string
+  is_pinned: boolean
+  is_archived: boolean
+  tags: string[]
+  metadata: {
+    session_date?: string
+    status?: string
+    member_count?: number
+    action_items_count?: number
+    word_count?: number
+  }
+  created_at: string
+  updated_at: string
+}
+
+// =====================================================
 // Core Dashboard Types
 // =====================================================
 
