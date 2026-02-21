@@ -44,8 +44,9 @@ export async function GET() {
     const calendarWeek = calendarWeekRes.data || []
     const securityData = securityRes.data?.data || {}
     
-    // Separate ideas from documents
+    // Separate ideas from documents — ideas use metadata.status, not a direct column
     const ideas = documents.filter((d: any) => d.tags?.includes('idea') || d.category === 'planning')
+      .map((d: any) => ({ ...d, status: d.metadata?.status || 'new' }))
     const docs = documents.filter((d: any) => !d.tags?.includes('idea') && d.category !== 'planning')
 
     // Extract context window usage from security collector data
@@ -54,12 +55,17 @@ export async function GET() {
       total: securityData.context.total || 0,
     } : null
 
+    // Find in-progress task, fallback to most recent task title
+    const inProgressTask = tasks.find((t: any) => t.status === 'in_progress')
+    const currentTaskTitle = inProgressTask?.title || 
+      (tasks.length > 0 ? `${tasks.length} tasks in pipeline` : 'Idle')
+
     return NextResponse.json({
       status: {
-        model: securityData?.system?.model || 'Claude Opus 4.6',
+        model: securityData?.system?.model || 'Claude Sonnet 4.6',
         channel: securityData?.system?.channel || 'discord',
-        status: 'working',
-        currentTask: tasks.find((t: any) => t.status === 'in_progress')?.title || 'Monitoring systems',
+        status: inProgressTask ? 'working' : 'idle',
+        currentTask: currentTaskTitle,
         contextUsage,
       },
       tasks,

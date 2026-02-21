@@ -85,13 +85,13 @@ export interface SecurityData {
 // Mock data - fallback when Supabase is unavailable
 const mockSecurityData: SecurityData = {
   system: {
-    openclawVersion: '2026.2.15',
-    latestVersion: '2026.2.15',
+    openclawVersion: '2026.2.17',
+    latestVersion: '2026.2.17',
     updateAvailable: false,
     nodeVersion: 'v24.13.1',
-    os: 'Windows 10.0.26100 (x64)',
-    uptime: '2h 15m',
-    lastUpdate: '2026-02-16T08:40:00Z',
+    os: 'Windows 11 (10.0.26200, x64)',
+    uptime: 'Running',
+    lastUpdate: '2026-02-20T00:00:00Z',
   },
   context: {
     used: 45000,

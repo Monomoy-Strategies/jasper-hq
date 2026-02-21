@@ -1,7 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Lightbulb, Star, Tag, Clock } from 'lucide-react'
+import { Lightbulb, Star, Clock } from 'lucide-react'
+
+const STATUS_CYCLE = ['new', 'exploring', 'validated', 'backburner', 'archived']
+
+async function updateIdeaStatus(ideaId: string, newStatus: string) {
+  try {
+    await fetch(`/api/ideas/${ideaId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+  } catch {}
+}
 
 interface IdeasTabProps {
   ideas?: any[]
@@ -43,20 +56,35 @@ function formatDate(iso: string) {
   }
 }
 
-export function IdeasTab({ ideas = [] }: IdeasTabProps) {
+export function IdeasTab({ ideas: initialIdeas = [] }: IdeasTabProps) {
+  const [ideas, setIdeas] = useState(initialIdeas)
+
+  const cycleStatus = async (ideaId: string) => {
+    const idea = ideas.find(i => i.id === ideaId)
+    if (!idea) return
+    const currentStatus = idea.metadata?.status || idea.status || 'new'
+    const currentIndex = STATUS_CYCLE.indexOf(currentStatus)
+    const nextStatus = STATUS_CYCLE[(currentIndex + 1) % STATUS_CYCLE.length]
+    setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, metadata: { ...(i.metadata || {}), status: nextStatus } } : i))
+    await updateIdeaStatus(ideaId, nextStatus)
+  }
+
+  // Status is stored in metadata.status (not a direct column)
+  const getStatus = (i: any) => i.metadata?.status || i.status || 'new'
+
   // Group ideas by status
-  const newIdeas = ideas.filter(i => i.status === 'new' || !i.status)
-  const exploringIdeas = ideas.filter(i => i.status === 'exploring' || i.status === 'in-progress')
-  const validatedIdeas = ideas.filter(i => i.status === 'validated' || i.status === 'approved')
-  const backburnerIdeas = ideas.filter(i => i.status === 'backburner' || i.status === 'paused')
+  const newIdeas = ideas.filter(i => getStatus(i) === 'new')
+  const exploringIdeas = ideas.filter(i => ['exploring', 'in-progress'].includes(getStatus(i)))
+  const validatedIdeas = ideas.filter(i => ['validated', 'approved'].includes(getStatus(i)))
+  const backburnerIdeas = ideas.filter(i => ['backburner', 'paused'].includes(getStatus(i)))
 
   const IdeaCard = ({ idea }: { idea: any }) => (
-    <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/20 hover:bg-slate-700/50 transition">
+    <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/20 hover:bg-slate-700/50 transition group">
       <div className="flex items-start justify-between mb-2">
         <h4 className="text-sm font-medium text-white line-clamp-2">{idea.title}</h4>
-        {idea.rating && (
+        {(idea.rating || idea.metadata?.rating) && (
           <div className="flex items-center gap-0.5 shrink-0 ml-2">
-            {getRatingStars(idea.rating)}
+            {getRatingStars(idea.rating || idea.metadata?.rating)}
           </div>
         )}
       </div>
@@ -78,9 +106,13 @@ export function IdeasTab({ ideas = [] }: IdeasTabProps) {
         </div>
       )}
       <div className="flex items-center justify-between text-xs">
-        <Badge className={`border ${getStatusColor(idea.status)}`}>
-          {idea.status || 'new'}
-        </Badge>
+        <button
+          onClick={() => cycleStatus(idea.id)}
+          title="Click to cycle status"
+          className={`border rounded-full px-2 py-0.5 font-medium text-[11px] transition hover:opacity-80 cursor-pointer ${getStatusColor(getStatus(idea))}`}
+        >
+          {getStatus(idea)} →
+        </button>
         {idea.created_at && (
           <span className="text-slate-500 flex items-center gap-1">
             <Clock className="h-3 w-3" />
