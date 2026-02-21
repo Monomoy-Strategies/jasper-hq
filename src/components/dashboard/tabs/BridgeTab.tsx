@@ -3,6 +3,70 @@
 import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 
+interface QuickAction {
+  label: string
+  desc: string
+  command: string
+  emoji: string
+  style: 'default' | 'danger' | 'success'
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Restart Gateway', desc: 'Rebuild prompt cache', command: 'restart-gateway', emoji: '🔄', style: 'default' },
+  { label: 'Fresh Session', desc: 'Start Jasper with clean context', command: 'fresh-session', emoji: '✨', style: 'success' },
+  { label: 'Security Audit', desc: 'Run security scan now', command: 'security-audit', emoji: '🛡️', style: 'default' },
+  { label: 'Backup Workspace', desc: 'Snapshot .md files + config', command: 'backup-workspace', emoji: '💾', style: 'default' },
+  { label: 'Morning Briefing', desc: 'Run briefing cron now', command: 'run-briefing', emoji: '🌅', style: 'default' },
+  { label: 'Email Triage', desc: 'Run triage cron now', command: 'run-triage', emoji: '📧', style: 'default' },
+]
+
+function QuickActionButton({ action }: { action: QuickAction }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [msg, setMsg] = useState('')
+
+  const handleClick = async () => {
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/commands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: action.command }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setStatus('done')
+        setMsg('Queued!')
+      } else {
+        setStatus('error')
+        setMsg('Failed')
+      }
+    } catch {
+      setStatus('error')
+      setMsg('Error')
+    }
+    setTimeout(() => { setStatus('idle'); setMsg('') }, 3000)
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading'}
+      className={`flex flex-col items-start gap-1 p-3 rounded-lg border transition text-left w-full ${
+        status === 'done' ? 'border-emerald-500/50 bg-emerald-900/20' :
+        status === 'error' ? 'border-red-500/50 bg-red-900/20' :
+        'border-slate-700/50 bg-slate-800/30 hover:bg-slate-700/40 hover:border-slate-600/50'
+      } ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}`}
+    >
+      <div className="flex items-center gap-2 w-full">
+        <span>{status === 'loading' ? '⏳' : status === 'done' ? '✅' : status === 'error' ? '❌' : action.emoji}</span>
+        <span className="text-sm font-medium text-white">{action.label}</span>
+        {msg && <span className="text-xs text-emerald-300 ml-auto">{msg}</span>}
+      </div>
+      <span className="text-[11px] text-slate-500 pl-6">{action.desc}</span>
+    </button>
+  )
+}
+
 interface CronJob {
   name: string
   schedule: string
@@ -163,6 +227,20 @@ export function BridgeTab() {
             <span className="text-slate-400">Tonight&apos;s Assignment:</span>
             <p className="text-emerald-300 font-medium mt-1">Jasper HQ comprehensive fix</p>
           </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="border border-slate-700/50 bg-slate-800/30 rounded-xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-lg">⚡</span>
+          <h3 className="font-semibold text-white text-base">Quick Actions</h3>
+          <span className="text-xs text-slate-500 ml-auto">Commands queue for Jasper to execute</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {QUICK_ACTIONS.map((action) => (
+            <QuickActionButton key={action.command} action={action} />
+          ))}
         </div>
       </div>
 

@@ -14,6 +14,8 @@ import {
   FortTab,
   CalendarTab,
   IdeasTab,
+  CostsTab,
+  ApiHealthTab,
 } from '@/components/dashboard/tabs'
 
 interface DashboardData {
@@ -83,6 +85,10 @@ export default function Home() {
         return <CalendarTab calendar={data?.calendar} />
       case 'ideas':
         return <IdeasTab ideas={data?.ideas || []} />
+      case 'costs':
+        return <CostsTab />
+      case 'apis':
+        return <ApiHealthTab />
       default:
         return <DashboardTab data={data || {}} />
     }
