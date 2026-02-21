@@ -11,8 +11,9 @@ function getClient() {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabase = getClient()
   if (!supabase) return NextResponse.json({ error: 'Not configured' }, { status: 500 })
 
@@ -23,7 +24,7 @@ export async function PATCH(
     const { data: current, error: fetchErr } = await supabase
       .from('agent_documents')
       .select('metadata')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchErr) throw fetchErr
@@ -35,7 +36,7 @@ export async function PATCH(
     const { error } = await supabase
       .from('agent_documents')
       .update({ metadata: updatedMetadata })
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
     return NextResponse.json({ ok: true })

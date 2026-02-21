@@ -11,8 +11,9 @@ function getClient() {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabase = getClient()
   if (!supabase) return NextResponse.json({ error: 'Not configured' }, { status: 500 })
 
@@ -28,7 +29,7 @@ export async function PATCH(
     const { error } = await supabase
       .from('agent_tasks')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
     return NextResponse.json({ ok: true })
@@ -39,8 +40,9 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabase = getClient()
   if (!supabase) return NextResponse.json({ error: 'Not configured' }, { status: 500 })
 
@@ -48,7 +50,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('agent_tasks')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
     return NextResponse.json({ ok: true })

@@ -16,6 +16,7 @@ import {
   IdeasTab,
   CostsTab,
   ApiHealthTab,
+  ChatTab,
 } from '@/components/dashboard/tabs'
 
 interface DashboardData {
@@ -89,6 +90,8 @@ export default function Home() {
         return <CostsTab />
       case 'apis':
         return <ApiHealthTab />
+      case 'chat':
+        return <ChatTab />
       default:
         return <DashboardTab data={data || {}} />
     }
