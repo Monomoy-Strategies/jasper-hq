@@ -115,6 +115,7 @@ export function ChatTab() {
     setSending(true)
     setInput('')
 
+    // Optimistic user message
     const optimisticMsg: ChatMessage = {
       id: `temp-${Date.now()}`,
       created_at: new Date().toISOString(),
@@ -123,6 +124,7 @@ export function ChatTab() {
       status: 'complete',
     }
     setMessages(prev => [...prev, optimisticMsg])
+    setWaitingForResponse(true)
 
     try {
       const res = await fetch('/api/chat/send', {
@@ -132,14 +134,31 @@ export function ChatTab() {
       })
       if (res.ok) {
         const data = await res.json()
-        // Replace optimistic message with real one
-        setMessages(prev =>
-          prev.map(m => m.id === optimisticMsg.id ? data.message : m)
-        )
-        startPolling(data.message.id)
+        const realUser = data.userMessage || data.message
+        const realAssistant = data.assistantMessage
+
+        setMessages(prev => {
+          const withoutOptimistic = prev.filter(m => m.id !== optimisticMsg.id)
+          return realAssistant
+            ? [...withoutOptimistic, realUser, realAssistant]
+            : [...withoutOptimistic, realUser]
+        })
+
+        if (realAssistant?.content) {
+          // Response came back synchronously — play TTS and stop waiting
+          playTTS(realAssistant.content)
+          setWaitingForResponse(false)
+        } else {
+          // Async path — poll for response
+          startPolling(realUser.id)
+        }
+      } else {
+        setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id))
+        setWaitingForResponse(false)
       }
     } catch {
-      // Keep optimistic message
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id))
+      setWaitingForResponse(false)
     } finally {
       setSending(false)
     }
