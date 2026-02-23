@@ -2,6 +2,7 @@
 
 import { LiveStatusWidget } from '@/components/dashboard/LiveStatusWidget'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { AgentCommandCenter } from '@/components/AgentCommandCenter'
 
 interface DashboardTabProps {
   data: {
@@ -17,6 +18,9 @@ export function DashboardTab({ data }: DashboardTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Agent Command Center — Mission Control */}
+      <AgentCommandCenter />
+
       {/* Top Row — 3 Equal Sections: Jasper | System | Today */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Jasper */}
