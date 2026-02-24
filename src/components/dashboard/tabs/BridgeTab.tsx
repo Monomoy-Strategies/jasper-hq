@@ -177,7 +177,39 @@ export function BridgeTab() {
         </div>
       </div>
 
-      {/* Agent Command Center — All 5 Agents */}
+      {/* Jasper — Primary Agent (Command & Control) */}
+      <div className="border-2 border-emerald-500/50 bg-gradient-to-br from-slate-800/80 to-emerald-900/20 rounded-xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">🦞</div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="text-2xl font-bold text-white">Jasper Fidelis Monomoy</h3>
+                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+              </div>
+              <p className="text-lg text-amber-300">Primary Agent — Command & Control</p>
+              <p className="text-sm text-slate-400">Claude Sonnet 4.6 · Orchestrator · All Channels</p>
+            </div>
+          </div>
+          <Badge className="border bg-emerald-900/30 text-emerald-300 border-emerald-500/30">ACTIVE</Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div className="p-3 bg-slate-900/50 rounded-lg">
+            <span className="text-slate-400 text-xs">Role</span>
+            <p className="text-white font-medium mt-1">Orchestrator</p>
+          </div>
+          <div className="p-3 bg-slate-900/50 rounded-lg">
+            <span className="text-slate-400 text-xs">Manages</span>
+            <p className="text-emerald-300 font-medium mt-1">5 Agents</p>
+          </div>
+          <div className="p-3 bg-slate-900/50 rounded-lg">
+            <span className="text-slate-400 text-xs">Channel</span>
+            <p className="text-white font-medium mt-1">Discord · Telegram</p>
+          </div>
+        </div>
+      </div>
+
+      {/* The Squad — 5 Agents Reporting to Jasper */}
       <AgentCommandCenter />
 
       {/* Infrastructure Overview */}
@@ -204,34 +236,6 @@ export function BridgeTab() {
             <div className="text-[10px] text-slate-600 mt-0.5">{item.sub}</div>
           </div>
         ))}
-      </div>
-
-      {/* Jasper Primary Agent */}
-      <div className="border-2 border-emerald-500/50 bg-gradient-to-br from-slate-800/80 to-emerald-900/20 rounded-xl p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">🦞</div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h3 className="text-2xl font-bold text-white">Jasper Fidelis Monomoy</h3>
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-              </div>
-              <p className="text-lg text-amber-300">Primary Agent — Command & Control</p>
-              <p className="text-sm text-slate-400">Claude Sonnet 4.6 · Discord #jasper</p>
-            </div>
-          </div>
-          <Badge className="border bg-emerald-900/30 text-emerald-300 border-emerald-500/30">ACTIVE</Badge>
-        </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="p-3 bg-slate-900/50 rounded-lg">
-            <span className="text-slate-400">Current Session:</span>
-            <p className="text-white font-medium mt-1">The Vibe Entrepreneur build sprint</p>
-          </div>
-          <div className="p-3 bg-slate-900/50 rounded-lg">
-            <span className="text-slate-400">Tonight&apos;s Assignment:</span>
-            <p className="text-emerald-300 font-medium mt-1">Jasper HQ comprehensive fix</p>
-          </div>
-        </div>
       </div>
 
       {/* Quick Actions */}
