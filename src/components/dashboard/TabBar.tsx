@@ -10,17 +10,17 @@ export interface Tab {
 
 export const TABS: Tab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+  { id: 'bridge', label: 'The Bridge', icon: '🌉' },
   { id: 'security', label: 'Security', icon: '🛡️' },
   { id: 'tasks', label: 'Tasks', icon: '📋' },
+  { id: 'calendar', label: 'Calendar', icon: '📅' },
   { id: 'projects', label: 'Projects', icon: '📁' },
   { id: 'ai-board', label: 'AI Board', icon: '🏛️' },
-  { id: 'bridge', label: 'The Bridge', icon: '🌉' },
+  { id: 'ideas', label: 'Ideas', icon: '💡' },
+  { id: 'marketing', label: 'Marketing', icon: '📈' },
   { id: 'costs', label: 'Costs', icon: '💰' },
   { id: 'apis', label: 'APIs', icon: '🔌' },
-  { id: 'marketing', label: 'Marketing', icon: '📈' },
   { id: 'fort', label: 'The Fort', icon: '💪' },
-  { id: 'calendar', label: 'Calendar', icon: '📅' },
-  { id: 'ideas', label: 'Ideas', icon: '💡' },
   { id: 'chat', label: 'Chat', icon: '🦞' },
 ]
 

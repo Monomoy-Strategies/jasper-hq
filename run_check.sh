@@ -1,0 +1,4 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+export SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5bWZzaWZyamNpc25jbnp5d2JkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTUyOTQ0MCwiZXhwIjoyMDg2ODg5NDQwfQ.Jz4gN784uO-SAd0_IIPLmYKlBSrs55ZAGszIvQ0JMdE'
+node check_pending.js

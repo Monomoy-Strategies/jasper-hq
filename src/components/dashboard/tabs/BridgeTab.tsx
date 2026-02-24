@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
+import { AgentCommandCenter } from '@/components/AgentCommandCenter'
 
 interface QuickAction {
   label: string
@@ -175,6 +176,9 @@ export function BridgeTab() {
           </div>
         </div>
       </div>
+
+      {/* Agent Command Center — All 5 Agents */}
+      <AgentCommandCenter />
 
       {/* Infrastructure Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
