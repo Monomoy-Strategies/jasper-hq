@@ -212,6 +212,42 @@ export function BridgeTab() {
       {/* The Squad — 5 Agents Reporting to Jasper */}
       <AgentCommandCenter />
 
+      {/* Local Fleet (On-Device Models) */}
+      <div className="border border-slate-700/50 bg-slate-800/30 rounded-xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-lg">🏠</span>
+          <h3 className="font-semibold text-white text-base">Local Fleet (On-Device Models)</h3>
+          <span className="text-xs text-slate-500 ml-auto">Monomoy-1 · Ollama</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {LOCAL_MODELS.map((model) => (
+            <div key={model.id} className="border border-slate-700/50 bg-slate-800/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{model.emoji}</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-white">{model.name}</h4>
+                      <span className={`w-2 h-2 rounded-full ${getStatusColor(model.status)}`}></span>
+                    </div>
+                    <p className="text-xs text-slate-400">{model.model}</p>
+                  </div>
+                </div>
+                <Badge className={`text-xs border ${
+                  model.role === 'Senior Intern'
+                    ? 'bg-blue-900/20 text-blue-300 border-blue-500/30'
+                    : 'bg-slate-700/30 text-slate-400 border-slate-600/30'
+                }`}>
+                  {model.role}
+                </Badge>
+              </div>
+              <p className="text-sm text-slate-400">{model.assignment}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-slate-600 mt-3">* Board of Directors (CSO/COO/CRO/CPO) are cloud-based — managed via the AI Board tab</p>
+      </div>
+
       {/* Infrastructure Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -281,41 +317,6 @@ export function BridgeTab() {
         </div>
       </div>
 
-      {/* Local Models */}
-      <div className="border border-slate-700/50 bg-slate-800/30 rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-lg">🏠</span>
-          <h3 className="font-semibold text-white text-base">Local Fleet (On-Device Models)</h3>
-          <span className="text-xs text-slate-500 ml-auto">Monomoy-1 · Ollama</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {LOCAL_MODELS.map((model) => (
-            <div key={model.id} className="border border-slate-700/50 bg-slate-800/30 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{model.emoji}</span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white">{model.name}</h4>
-                      <span className={`w-2 h-2 rounded-full ${getStatusColor(model.status)}`}></span>
-                    </div>
-                    <p className="text-xs text-slate-400">{model.model}</p>
-                  </div>
-                </div>
-                <Badge className={`text-xs border ${
-                  model.role === 'Senior Intern'
-                    ? 'bg-blue-900/20 text-blue-300 border-blue-500/30'
-                    : 'bg-slate-700/30 text-slate-400 border-slate-600/30'
-                }`}>
-                  {model.role}
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-400">{model.assignment}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-slate-600 mt-3">* Board of Directors (CSO/COO/CRO/CPO) are cloud-based — managed via the AI Board tab</p>
-      </div>
     </div>
   )
 }
