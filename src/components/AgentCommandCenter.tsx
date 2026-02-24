@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 
 // ── Agent Definitions ──────────────────────────────────────────────────────────
 
@@ -10,6 +9,8 @@ interface AgentDef {
   name: string
   emoji: string
   role: string
+  title: string
+  owns: string[]
   color: string
   borderColor: string
   textColor: string
@@ -22,6 +23,8 @@ const AGENTS: AgentDef[] = [
     name: 'BEACON',
     emoji: '📡',
     role: 'Content Creation',
+    title: 'Content & Brand Strategist',
+    owns: ['Blog & social content', 'Newsletter drafts', 'TVE & Monomoy copy'],
     color: 'amber',
     borderColor: 'border-amber-500/40',
     textColor: 'text-amber-300',
@@ -32,6 +35,8 @@ const AGENTS: AgentDef[] = [
     name: 'NAVIGATOR',
     emoji: '🔭',
     role: 'Research & Intel',
+    title: 'Research & Intelligence Lead',
+    owns: ['Market research', 'Competitor analysis', 'Daily intel briefings'],
     color: 'blue',
     borderColor: 'border-blue-500/40',
     textColor: 'text-blue-300',
@@ -42,6 +47,8 @@ const AGENTS: AgentDef[] = [
     name: 'RIGGER',
     emoji: '⚙️',
     role: 'Automation & n8n',
+    title: 'Automation & Infrastructure Engineer',
+    owns: ['n8n workflow pipelines', 'GiftHQ social pipeline', 'Integration & sync jobs'],
     color: 'orange',
     borderColor: 'border-orange-500/40',
     textColor: 'text-orange-300',
@@ -52,6 +59,8 @@ const AGENTS: AgentDef[] = [
     name: 'FORGE',
     emoji: '💻',
     role: 'Development',
+    title: 'Lead Developer',
+    owns: ['Jasper HQ', 'Vortxx', 'YTidy', 'GiftHQ', 'All code & deploys'],
     color: 'emerald',
     borderColor: 'border-emerald-500/40',
     textColor: 'text-emerald-300',
@@ -61,7 +70,9 @@ const AGENTS: AgentDef[] = [
     id: 'fort',
     name: 'ANCHOR',
     emoji: '🏰',
-    role: 'The Fort Marketing',
+    role: 'The Fort Strategy',
+    title: 'Fort Marketing & Strategy Lead',
+    owns: ['Fort marketing plans', 'Performance Therapy growth', 'Membership & pricing'],
     color: 'purple',
     borderColor: 'border-purple-500/40',
     textColor: 'text-purple-300',
@@ -69,42 +80,55 @@ const AGENTS: AgentDef[] = [
   },
 ]
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Current Assignments (update as agents take on new work) ───────────────────
 
-interface AgentTask {
-  id: string
-  agent: string
-  project: string | null
-  title: string
-  description: string | null
-  branch: string | null
-  pr: number | null
-  status: 'queued' | 'running' | 'blocked' | 'review-ready' | 'done'
+interface Assignment {
+  status: 'active' | 'queued' | 'idle' | 'blocked'
+  project: string
+  task: string
   priority: 'P1' | 'P2' | 'P3'
-  created_at: string
-  updated_at: string
-  completed_at: string | null
-  notes: string | null
 }
 
-type AgentStatus = 'idle' | 'active' | 'queued' | 'blocked' | 'review'
-
-// ── Status helpers ─────────────────────────────────────────────────────────────
-
-function getAgentStatus(tasks: AgentTask[]): AgentStatus {
-  if (tasks.some(t => t.status === 'blocked')) return 'blocked'
-  if (tasks.some(t => t.status === 'running')) return 'active'
-  if (tasks.some(t => t.status === 'review-ready')) return 'review'
-  if (tasks.some(t => t.status === 'queued')) return 'queued'
-  return 'idle'
+const CURRENT_ASSIGNMENTS: Record<string, Assignment> = {
+  beacon: {
+    status: 'queued',
+    project: 'TVE Newsletter',
+    task: 'Draft TVE Issue #1 — Apply This Now section',
+    priority: 'P1',
+  },
+  navigator: {
+    status: 'queued',
+    project: 'GiftHQ',
+    task: 'Research Amazon PA API categories for Mother\'s Day',
+    priority: 'P1',
+  },
+  rigger: {
+    status: 'active',
+    project: 'GiftHQ Pipeline',
+    task: 'Build Amazon → OpenAI → video → social auto-posting pipeline',
+    priority: 'P1',
+  },
+  dev: {
+    status: 'queued',
+    project: 'Jasper Chat',
+    task: 'Fix chat lag — bypass cron, call Claude API directly in /api/chat/send',
+    priority: 'P1',
+  },
+  fort: {
+    status: 'active',
+    project: 'The Fort',
+    task: 'March 1 price increase — member communication & Drew talking points',
+    priority: 'P1',
+  },
 }
 
-const STATUS_CONFIG: Record<AgentStatus, { dot: string; label: string; dotColor: string }> = {
-  idle:    { dot: '🟢', label: 'IDLE',    dotColor: 'bg-emerald-400' },
-  active:  { dot: '🟡', label: 'ACTIVE',  dotColor: 'bg-yellow-400' },
-  queued:  { dot: '🔵', label: 'QUEUED',  dotColor: 'bg-blue-400' },
-  blocked: { dot: '🔴', label: 'BLOCKED', dotColor: 'bg-red-400' },
-  review:  { dot: '🟣', label: 'REVIEW',  dotColor: 'bg-purple-400' },
+type AgentStatus = 'idle' | 'active' | 'queued' | 'blocked'
+
+const STATUS_CONFIG: Record<AgentStatus, { label: string; dotColor: string }> = {
+  idle:    { label: 'IDLE',    dotColor: 'bg-slate-400' },
+  active:  { label: 'ACTIVE',  dotColor: 'bg-yellow-400' },
+  queued:  { label: 'QUEUED',  dotColor: 'bg-blue-400' },
+  blocked: { label: 'BLOCKED', dotColor: 'bg-red-400' },
 }
 
 const PRIORITY_BADGE: Record<string, string> = {
@@ -113,67 +137,75 @@ const PRIORITY_BADGE: Record<string, string> = {
   P3: 'bg-slate-700/40 text-slate-300 border-slate-500/30',
 }
 
+// Legacy Supabase task type (for future live integration)
+interface AgentTask {
+  id: string
+  agent: string
+  status: string
+  priority: string
+  title: string
+  project: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ── Sub-component: Agent Card ──────────────────────────────────────────────────
 
-function AgentCard({
-  agent,
-  tasks,
-}: {
-  agent: AgentDef
-  tasks: AgentTask[]
-}) {
-  const status = getAgentStatus(tasks)
+function AgentCard({ agent }: { agent: AgentDef }) {
+  const assignment = CURRENT_ASSIGNMENTS[agent.id]
+  const status = assignment?.status ?? 'idle'
   const statusInfo = STATUS_CONFIG[status]
-  const activeTasks = tasks.filter(t => t.status === 'running' || t.status === 'queued')
-  const doneTasks = tasks.filter(t => t.status === 'done')
-  const currentTask = tasks.find(t => t.status === 'running') || tasks.find(t => t.status === 'queued')
 
   return (
-    <div
-      className={`rounded-lg border ${agent.borderColor} ${agent.bgColor} p-4 flex flex-col gap-3 min-h-[200px]`}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{agent.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-bold ${agent.textColor} truncate`}>{agent.name}</p>
-          <p className="text-[10px] text-slate-500 truncate">{agent.role}</p>
+    <div className={`rounded-lg border ${agent.borderColor} ${agent.bgColor} p-4 flex flex-col gap-3`}>
+      {/* Header — name + status */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{agent.emoji}</span>
+          <div>
+            <p className={`text-sm font-bold ${agent.textColor}`}>{agent.name}</p>
+            <p className="text-[11px] text-slate-400">{agent.title}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`w-2 h-2 rounded-full ${statusInfo.dotColor} ${status === 'active' ? 'animate-pulse' : ''}`} />
+          <span className={`text-[10px] font-semibold ${agent.textColor}`}>{statusInfo.label}</span>
         </div>
       </div>
 
-      {/* Status badge */}
-      <div className="flex items-center gap-2">
-        <span className={`inline-block w-2 h-2 rounded-full ${statusInfo.dotColor} animate-pulse`} />
-        <span className={`text-xs font-semibold ${agent.textColor}`}>{statusInfo.label}</span>
+      {/* Responsibilities */}
+      <div>
+        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1.5 font-medium">Owns</p>
+        <ul className="space-y-0.5">
+          {agent.owns.map((item) => (
+            <li key={item} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+              <span className={`mt-0.5 w-1 h-1 rounded-full bg-current ${agent.textColor} shrink-0`} />
+              {item}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Current task */}
-      <div className="flex-1">
-        {currentTask ? (
+      {/* Current assignment */}
+      <div className="border-t border-slate-700/40 pt-2.5 flex-1">
+        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1 font-medium">
+          {status === 'active' ? '▶ Running' : status === 'queued' ? '⏳ Up Next' : 'Assignment'}
+        </p>
+        {assignment && status !== 'idle' ? (
           <div className="space-y-1">
-            <p className="text-[11px] text-slate-400 font-medium">
-              {currentTask.status === 'running' ? '▶ Running' : '⏳ Next up'}
+            <p className="text-xs text-white font-medium leading-snug line-clamp-2">
+              {assignment.task}
             </p>
-            <p className="text-xs text-white font-medium leading-tight line-clamp-2">
-              {currentTask.title}
-            </p>
-            {currentTask.project && (
-              <p className="text-[10px] text-slate-500 truncate">{currentTask.project}</p>
-            )}
-            <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded border ${PRIORITY_BADGE[currentTask.priority]}`}>
-              {currentTask.priority}
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-slate-500 truncate">{assignment.project}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_BADGE[assignment.priority]}`}>
+                {assignment.priority}
+              </span>
+            </div>
           </div>
         ) : (
-          <p className="text-[11px] text-slate-500 italic">No active tasks</p>
+          <p className="text-[11px] text-slate-500 italic">Available — awaiting task</p>
         )}
-      </div>
-
-      {/* Footer counts */}
-      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-700/40">
-        <span>{activeTasks.length} active</span>
-        <span>{doneTasks.length} done</span>
-        <span>{tasks.length} total</span>
       </div>
     </div>
   )
@@ -182,61 +214,13 @@ function AgentCard({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function AgentCommandCenter() {
-  const [tasks, setTasks] = useState<AgentTask[]>([])
-  const [loading, setLoading] = useState(true)
-  const [liveIndicator, setLiveIndicator] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [lastUpdated] = useState<Date>(new Date())
 
-  // Fetch all agent_tasks from Supabase
-  async function fetchTasks() {
-    if (!supabase) return
-    const { data, error } = await supabase
-      .from('agent_tasks')
-      .select('*')
-      .order('updated_at', { ascending: false })
-
-    if (!error && data) {
-      setTasks(data as AgentTask[])
-      setLastUpdated(new Date())
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    fetchTasks()
-
-    if (!supabase) return
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('agent_tasks_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'agent_tasks' },
-        () => {
-          fetchTasks()
-          // Pulse live indicator
-          setLiveIndicator(false)
-          setTimeout(() => setLiveIndicator(true), 300)
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  // Group tasks by agent
-  const tasksByAgent = AGENTS.reduce<Record<string, AgentTask[]>>((acc, agent) => {
-    acc[agent.id] = tasks.filter(t => t.agent === agent.id)
-    return acc
-  }, {})
-
-  // Overall counts
-  const runningCount = tasks.filter(t => t.status === 'running').length
-  const queuedCount = tasks.filter(t => t.status === 'queued').length
-  const blockedCount = tasks.filter(t => t.status === 'blocked').length
+  // Counts from static CURRENT_ASSIGNMENTS
+  const assignments = Object.values(CURRENT_ASSIGNMENTS)
+  const runningCount = assignments.filter(a => a.status === 'active').length
+  const queuedCount  = assignments.filter(a => a.status === 'queued').length
+  const blockedCount = assignments.filter(a => a.status === 'blocked').length
 
   return (
     <div className="border border-slate-700/50 bg-slate-800/40 backdrop-blur rounded-lg p-5">
@@ -263,45 +247,26 @@ export function AgentCommandCenter() {
             </span>
           )}
 
-          {/* Live indicator */}
+          {/* Last updated */}
           <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-            <span
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                liveIndicator ? 'bg-emerald-400' : 'bg-slate-600'
-              }`}
-            />
-            Live
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </div>
         </div>
       </div>
 
       {/* Loading state */}
-      {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {AGENTS.map(agent => (
-            <div
-              key={agent.id}
-              className={`rounded-lg border ${agent.borderColor} ${agent.bgColor} p-4 min-h-[200px] animate-pulse`}
-            />
-          ))}
-        </div>
-      ) : (
-        /* Agent Cards Grid */
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {AGENTS.map(agent => (
-            <AgentCard key={agent.id} agent={agent} tasks={tasksByAgent[agent.id] || []} />
-          ))}
-        </div>
-      )}
+      {/* Agent Cards Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {AGENTS.map(agent => (
+          <AgentCard key={agent.id} agent={agent} />
+        ))}
+      </div>
 
       {/* Footer */}
       <div className="mt-4 flex items-center justify-between text-[10px] text-slate-600">
-        <span>
-          {tasks.length} total tasks • {queuedCount} queued • {runningCount} running
-        </span>
-        {lastUpdated && (
-          <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-        )}
+        <span>{runningCount} active · {queuedCount} queued · {blockedCount} blocked · {assignments.filter(a => a.status === 'idle').length} idle</span>
+        <span>Update assignments in AgentCommandCenter.tsx → CURRENT_ASSIGNMENTS</span>
       </div>
     </div>
   )
