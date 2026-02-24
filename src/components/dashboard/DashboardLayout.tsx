@@ -53,40 +53,42 @@ export function DashboardLayout({
   return (
     <DashboardContext.Provider value={data || { status: {}, tasks: [], activities: [], documents: [], projects: [], calendar: { today: [], week: [] }, ideas: [] }}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Header */}
-        <header className="border-b border-slate-700/50 bg-slate-800/50 backdrop-blur sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/jasper-avatar.jpg"
-                  alt="Jasper"
-                  width={44}
-                  height={44}
-                  className="rounded-full ring-2 ring-amber-400/60"
-                />
-                <div>
-                  <h1 className="text-2xl font-bold text-white">Jasper HQ</h1>
-                  <p className="text-sm text-slate-400">Command Center</p>
+        {/* Sticky Header + Tab Bar */}
+        <div className="sticky top-0 z-50">
+          <header className="border-b border-slate-700/50 bg-slate-800/50 backdrop-blur">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src="/jasper-avatar.jpg"
+                    alt="Jasper"
+                    width={44}
+                    height={44}
+                    className="rounded-full ring-2 ring-amber-400/60"
+                  />
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">Jasper HQ</h1>
+                    <p className="text-sm text-slate-400">Command Center</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <Badge 
+                    variant="outline" 
+                    className={currentStatus.class}
+                  >
+                    Status: {currentStatus.label}
+                  </Badge>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                <Badge 
-                  variant="outline" 
-                  className={currentStatus.class}
-                >
-                  Status: {currentStatus.label}
-                </Badge>
-              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Tab Bar */}
-        {onTabChange && (
-          <TabBar activeTab={activeTab} onTabChange={onTabChange} />
-        )}
+          {/* Tab Bar */}
+          {onTabChange && (
+            <TabBar activeTab={activeTab} onTabChange={onTabChange} />
+          )}
+        </div>
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-6">

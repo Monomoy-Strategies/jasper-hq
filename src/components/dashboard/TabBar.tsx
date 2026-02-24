@@ -31,7 +31,7 @@ interface TabBarProps {
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
-    <div className="border-b border-slate-700/50 bg-slate-800/30">
+    <div className="border-b border-slate-700/50 bg-slate-800/95 backdrop-blur">
       <div className="container mx-auto px-4">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
           {TABS.map((tab) => (
