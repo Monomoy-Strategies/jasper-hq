@@ -137,7 +137,6 @@ async function addEvent({ title, description, date, time, duration, isAllDay, lo
     reminders: [],
     source: 'manual',
     category: category || 'personal',
-    event_type: 'meeting',
     is_recurring: isRecurring || false,
     recurrence_pattern: isRecurring ? (recurrencePattern || 'weekly') : null,
     recurrence_interval: 1,
@@ -145,7 +144,6 @@ async function addEvent({ title, description, date, time, duration, isAllDay, lo
     recurrence_end_date: null,
     recurrence_end_count: null,
     parent_event_id: null,
-    is_exception_instance: false,
   }
 
   const { data, error } = await supabase

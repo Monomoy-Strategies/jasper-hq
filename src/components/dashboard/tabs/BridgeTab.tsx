@@ -87,25 +87,9 @@ interface LocalModel {
   assignment: string
 }
 
-const LOCAL_MODELS: LocalModel[] = [
-  {
-    id: 'llama70b',
-    name: 'Llama 70B',
-    model: 'Llama 3.3 70B',
-    role: 'Senior Intern',
-    status: 'idle',
-    emoji: '🏠',
-    assignment: 'Heavy local processing tasks',
-  },
-  {
-    id: 'llama8b',
-    name: 'Llama 8B',
-    model: 'Llama 3.1 8B',
-    role: 'Junior Intern',
-    status: 'idle',
-    emoji: '🏠',
-    assignment: 'Quick local tasks & triage',
-  },
+const LOCAL_MODELS_BASE: Omit<LocalModel, 'status'>[] = [
+  { id: 'llama3.3:70b', name: 'Llama 70B', model: 'Llama 3.3 70B · Q4_K_M · 42.5 GB', role: 'Senior Intern', emoji: '🏠', assignment: 'Heavy local processing & analysis' },
+  { id: 'llama3.1:8b',  name: 'Llama 8B',  model: 'Llama 3.1 8B · Q4_K_M · 4.9 GB',   role: 'Junior Intern', emoji: '🏠', assignment: 'Quick tasks, triage & fast responses' },
 ]
 
 const CRON_JOBS: CronJob[] = [
@@ -146,11 +130,39 @@ function getStatusBadgeClass(status: string) {
 
 export function BridgeTab() {
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [ollamaStatus, setOllamaStatus] = useState<'loading' | 'running' | 'down'>('loading')
+  const [runningModels, setRunningModels] = useState<string[]>([])
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(interval)
   }, [])
+
+  // Fetch Ollama status from security_status via dashboard API
+  useEffect(() => {
+    fetch('/api/security')
+      .then(r => r.json())
+      .then(d => {
+        const ollama = d?.data?.ollama
+        if (ollama?.status === 'running') {
+          setOllamaStatus('running')
+          setRunningModels((ollama.models || []).map((m: { name: string }) => m.name))
+        } else {
+          setOllamaStatus('down')
+        }
+      })
+      .catch(() => setOllamaStatus('down'))
+  }, [])
+
+  // Merge live status into model definitions
+  const LOCAL_MODELS: LocalModel[] = LOCAL_MODELS_BASE.map(m => ({
+    ...m,
+    status: ollamaStatus === 'loading' ? 'idle'
+          : ollamaStatus === 'running' && runningModels.some(r => r.startsWith(m.id.split(':')[0]))
+            ? 'active'
+          : ollamaStatus === 'running' ? 'idle'
+          : 'offline',
+  }))
 
   const activeCrons = CRON_JOBS.filter(j => j.status === 'running').length
   const okCrons = CRON_JOBS.filter(j => j.status === 'ok').length
@@ -217,7 +229,12 @@ export function BridgeTab() {
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg">🏠</span>
           <h3 className="font-semibold text-white text-base">Local Fleet (On-Device Models)</h3>
-          <span className="text-xs text-slate-500 ml-auto">Monomoy-1 · Ollama</span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${ollamaStatus === 'running' ? 'bg-emerald-400' : ollamaStatus === 'down' ? 'bg-red-400' : 'bg-slate-500 animate-pulse'}`} />
+            <span className="text-xs text-slate-500">
+              {ollamaStatus === 'loading' ? 'Checking…' : ollamaStatus === 'running' ? 'Ollama running' : 'Ollama offline'}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {LOCAL_MODELS.map((model) => (
