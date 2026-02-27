@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
-// Roger voice ID from ElevenLabs
-const VOICE_ID = 'CwhRBWXzGAHq8TQ4Fs17'
+// Tom (Conversations & Books) — Australian, easy going and natural
+const VOICE_ID = 'DYkrAHD8iwork3YSUBbs'
 // Flash v2.5 — lowest latency model (~75ms first chunk)
 const MODEL_ID = 'eleven_flash_v2_5'
 
