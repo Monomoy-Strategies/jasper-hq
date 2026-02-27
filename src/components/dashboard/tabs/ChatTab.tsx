@@ -312,7 +312,7 @@ export function ChatTab() {
         <span className="text-2xl">🦞</span>
         <div>
           <h2 className="text-white font-semibold">Chat with Jasper</h2>
-          <p className="text-slate-400 text-xs">GPT-4o · ElevenLabs Roger voice · paste or drop images</p>
+          <p className="text-slate-400 text-xs">GPT-4o · Roger voice (ElevenLabs) · paste or drop images</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
           {waitingForResponse && (
