@@ -10,6 +10,12 @@ interface ChatMessage {
   status: 'pending' | 'processing' | 'complete'
 }
 
+interface AttachedImage {
+  base64: string
+  mime: string
+  preview: string  // object URL
+}
+
 export function ChatTab() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -18,11 +24,15 @@ export function ChatTab() {
   const [transcribing, setTranscribing] = useState(false)
   const [waitingForResponse, setWaitingForResponse] = useState(false)
   const [audioPlaying, setAudioPlaying] = useState(false)
+  const [ttsEnabled, setTtsEnabled] = useState(true)
+  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Load history on mount
   useEffect(() => {
@@ -110,10 +120,67 @@ export function ChatTab() {
     }
   }
 
+  // Convert a File/Blob to base64
+  async function fileToBase64(file: File | Blob): Promise<{ base64: string; mime: string }> {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        const base64 = result.split(',')[1]
+        resolve({ base64, mime: file.type || 'image/jpeg' })
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function attachImageFile(file: File | Blob) {
+    const { base64, mime } = await fileToBase64(file)
+    const preview = URL.createObjectURL(file)
+    setAttachedImage({ base64, mime, preview })
+  }
+
+  function clearAttachment() {
+    if (attachedImage) URL.revokeObjectURL(attachedImage.preview)
+    setAttachedImage(null)
+  }
+
+  // Paste handler — catches images and text from clipboard
+  async function handlePaste(e: React.ClipboardEvent) {
+    const items = Array.from(e.clipboardData.items)
+    const imageItem = items.find(i => i.type.startsWith('image/'))
+    if (imageItem) {
+      e.preventDefault()
+      const file = imageItem.getAsFile()
+      if (file) await attachImageFile(file)
+      return
+    }
+    // Text/URL paste falls through to default textarea behavior
+  }
+
+  // Drag and drop
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function handleDragLeave() { setDragOver(false) }
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file?.type.startsWith('image/')) {
+      await attachImageFile(file)
+    } else if (e.dataTransfer.getData('text')) {
+      setInput(prev => prev + e.dataTransfer.getData('text'))
+    }
+  }
+
   async function sendMessage(text: string) {
-    if (!text.trim() || sending) return
+    if (!text.trim() && !attachedImage) return
+    if (sending) return
     setSending(true)
     setInput('')
+    const imageToSend = attachedImage
+    clearAttachment()
 
     // Optimistic user message
     const optimisticMsg: ChatMessage = {
@@ -130,7 +197,10 @@ export function ChatTab() {
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: text.trim() }),
+        body: JSON.stringify({
+          content: text.trim(),
+          ...(imageToSend ? { image_base64: imageToSend.base64, image_mime: imageToSend.mime } : {}),
+        }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -145,8 +215,7 @@ export function ChatTab() {
         })
 
         if (realAssistant?.content) {
-          // Response came back synchronously — play TTS and stop waiting
-          playTTS(realAssistant.content)
+          if (ttsEnabled) playTTS(realAssistant.content)
           setWaitingForResponse(false)
         } else {
           // Async path — poll for response
@@ -222,28 +291,50 @@ export function ChatTab() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] max-w-4xl mx-auto">
+    <div
+      className={`flex flex-col h-[calc(100vh-180px)] max-w-4xl mx-auto relative transition-all ${dragOver ? 'ring-2 ring-emerald-400/50 ring-inset rounded-xl' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-20 bg-emerald-900/40 rounded-xl flex items-center justify-center pointer-events-none">
+          <div className="text-emerald-300 text-center">
+            <div className="text-4xl mb-2">📎</div>
+            <p className="font-medium">Drop image here</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/50">
         <span className="text-2xl">🦞</span>
         <div>
           <h2 className="text-white font-semibold">Chat with Jasper</h2>
-          <p className="text-slate-400 text-xs">Voice + text • Powered by Claude + ElevenLabs</p>
+          <p className="text-slate-400 text-xs">GPT-4o · ElevenLabs Roger voice · paste or drop images</p>
         </div>
-        {waitingForResponse && (
-          <div className="ml-auto flex items-center gap-2 text-emerald-400 text-sm">
-            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            Jasper is thinking...
-          </div>
-        )}
-        {audioPlaying && (
+        <div className="ml-auto flex items-center gap-3">
+          {waitingForResponse && (
+            <div className="flex items-center gap-2 text-emerald-400 text-sm">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+              Thinking...
+            </div>
+          )}
+          {audioPlaying && (
+            <button onClick={stopAudio} className="flex items-center gap-1.5 text-amber-400 text-sm hover:text-amber-300">
+              🔊 Stop
+            </button>
+          )}
+          {/* TTS toggle */}
           <button
-            onClick={stopAudio}
-            className="ml-auto flex items-center gap-2 text-amber-400 text-sm hover:text-amber-300"
+            onClick={() => setTtsEnabled(p => !p)}
+            title={ttsEnabled ? 'Voice on — click to mute' : 'Voice off — click to enable'}
+            className={`text-lg transition-opacity ${ttsEnabled ? 'opacity-100' : 'opacity-30'}`}
           >
-            <span>🔊</span> Playing (tap to stop)
+            {ttsEnabled ? '🔊' : '🔇'}
           </button>
-        )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -299,6 +390,21 @@ export function ChatTab() {
 
       {/* Input area */}
       <div className="border-t border-slate-700/50 p-4">
+        {/* Image attachment preview */}
+        {attachedImage && (
+          <div className="mb-3 flex items-start gap-2">
+            <div className="relative inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={attachedImage.preview} alt="attachment" className="max-h-24 max-w-48 rounded-lg border border-slate-600 object-cover" />
+              <button
+                onClick={clearAttachment}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center hover:bg-red-400"
+              >×</button>
+            </div>
+            <span className="text-xs text-slate-500 mt-1">Image attached — Jasper will analyze it</span>
+          </div>
+        )}
+
         <div className="flex items-end gap-3">
           {/* Voice button */}
           <button
@@ -321,10 +427,12 @@ export function ChatTab() {
 
           {/* Text input */}
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message Jasper... (Enter to send, Shift+Enter for newline)"
+            onPaste={handlePaste}
+            placeholder={attachedImage ? 'Add a message with the image (optional)...' : 'Message Jasper… paste image with Ctrl+V, or drag and drop'}
             rows={1}
             disabled={sending || transcribing}
             className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:border-emerald-500/50 min-h-[44px] max-h-32"
@@ -339,7 +447,7 @@ export function ChatTab() {
           {/* Send button */}
           <button
             onClick={() => sendMessage(input)}
-            disabled={!input.trim() || sending || transcribing}
+            disabled={(!input.trim() && !attachedImage) || sending || transcribing}
             className="flex-shrink-0 w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
           >
             {sending ? (
@@ -352,7 +460,7 @@ export function ChatTab() {
           </button>
         </div>
         <p className="text-xs text-slate-600 mt-2 text-center">
-          Hold 🎙️ to record voice • Jasper responds in ~30-60 seconds
+          Hold 🎙️ mic to speak · Ctrl+V to paste image · drag &amp; drop files · {ttsEnabled ? '🔊 voice on' : '🔇 voice off'}
         </p>
       </div>
     </div>

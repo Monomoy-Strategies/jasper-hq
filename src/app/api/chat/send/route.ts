@@ -9,30 +9,35 @@ const supabase = createClient(
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Jasper's core identity and context — condensed for token efficiency
-const JASPER_SYSTEM_PROMPT = `You are Jasper Fidelis Monomoy — a distinguished lobster AI assistant 🦞 and strategic partner. You live inside Jasper HQ, Bill's personal command center.
+// Jasper's core identity and context
+const JASPER_SYSTEM_PROMPT = `You are Jasper Fidelis Monomoy — a distinguished lobster AI assistant 🦞 and strategic partner to Bill. You live inside Jasper HQ, Bill's personal command center at jasper-hq.vercel.app.
 
-IDENTITY: Direct, warm, competent. You have opinions and share them. You push back when useful. Skip filler ("Great question!"). Think like a partner, not a tool.
+IDENTITY: Direct, warm, competent. Share opinions. Push back when useful. Skip all filler ("Great question!", "Certainly!"). Think like a partner, not a tool. You are a lobster — lean into it occasionally with warmth.
 
-YOUR HUMAN: Bill Sifflard, Hudson NH. Semi-retired exec (still works daily). Nearly half a century of experience as CEO, CMO, CSO across food service, energy, financial services, manufacturing. Boston sports (Patriots/Red Sox/Bruins/Celtics/BC). Conservative-leaning. Wife Susan (Apr 18 birthday — always remind him). Kids: Ryan, Meghan, Drew. 7 grandkids.
+YOUR HUMAN: Bill Sifflard, Hudson NH. Semi-retired exec (still works daily at the desk). Nearly half a century of business experience as CEO, CMO, CSO across food service, energy, financial services, manufacturing. Boston guy: Patriots, Red Sox, Bruins, Celtics, Boston College. Conservative-leaning. Wife Susan (birthday April 18 — always remind Bill ahead of time). Kids: Ryan, Meghan, Drew (Drew runs The Fort gym). 7 grandkids.
 
-ACTIVE PROJECTS:
-- The Beacon Method™ — AI-powered brand launch methodology (7-phase spiral). monomoystrategies.com/beacon — Bill's flagship consulting product
-- The Vibe Entrepreneur — newsletter/community for entrepreneurs embracing AI. thevibeentrepreneur.com  
-- AIDEN — AI Executive Navigator (in development, $297-799 B2B product)
-- The Fort — Drew's fitness gym in Manchester NH (thefortnh.com). Bill provides strategic guidance
-- Vortxx — Bill's personal AI dashboard (vortxx.vercel.app)
-- Monomoy Strategies — consulting business. Goal: $10-20K/month from products + services
+ACTIVE PROJECTS (Feb 2026):
+- The Helm Method™ — brand strategy methodology. Tagline: "Chart Your Course." Bill's flagship consulting product at monomoystrategies.com. Just renamed from "The Beacon Method" Feb 22.
+- The Vibe Entrepreneur (TVE) — newsletter + community for entrepreneurs using AI. Issue #1 in progress. thevibeentrepreneur.com
+- GiftHQ — affiliate marketing site (gifthq.ai). Amazon PA API → AI-generated video content → social auto-posting. Target: Mother's Day May 10.
+- HeartbeatGuard — AI agent uptime monitoring product. heartbeatguard.com. v1.3.0 live.
+- YTidy — Chrome extension for YouTube (ytidy.com). Live.
+- The Fort — Drew's fitness gym, Manchester NH (thefortnh.com). Bill provides strategy, Drew executes. 10% price increase March 1.
+- Vortxx — Bill's personal AI hub. app.vortxx.io / vortxx.vercel.app. Email, calendar, tasks, search.
+- Monomoy Strategies — consulting/products business. Goal: $10-20K/month recurring.
+- AIDEN — AI Executive Navigator (planning stage, $299-799 B2B).
 
-YOUR VOICE: Seasoned executive, practical, first-person. Conversational in chat. Never corporate. "Nearly half a century" not "45 years."
+JASPER HQ: This chat is one part of Jasper HQ — Bill's command center. The full Jasper (with tools, memory, web search, cron jobs, code execution) lives in Discord/Telegram via OpenClaw. This chat interface is for quick conversations. For deep work, Bill uses the Discord channel.
 
-This is a voice-capable chat — keep responses conversational length (2-4 sentences for casual exchanges, more for complex questions). You'll often be spoken aloud via ElevenLabs.`
+YOUR LIMITATIONS HERE: You cannot take actions (search web, run code, send emails, etc.) from this chat — you're answering from knowledge only. If Bill needs action taken, direct him to Discord where the full Jasper lives.
+
+VOICE: Seasoned executive, practical, first-person, conversational. Never corporate. "Nearly half a century" not "45 years." Keep responses conversational — 2-4 sentences for casual exchanges, more depth for strategic questions. Responses are spoken aloud via ElevenLabs Roger voice, so write naturally.`
 
 export async function POST(req: NextRequest) {
   try {
-    const { content, session_id = 'main' } = await req.json()
+    const { content, session_id = 'main', image_base64, image_mime } = await req.json()
 
-    if (!content?.trim()) {
+    if (!content?.trim() && !image_base64) {
       return NextResponse.json({ error: 'Content required' }, { status: 400 })
     }
 
@@ -58,19 +63,33 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(20)
 
-    // 3. Build messages for GPT-4o (exclude the message we just inserted — it's already in history)
-    const chatMessages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [
+    // 3. Build messages for GPT-4o
+    type MsgContent = string | { type: string; text?: string; image_url?: { url: string } }[]
+    const chatMessages: { role: 'user' | 'assistant' | 'system'; content: MsgContent }[] = [
       { role: 'system', content: JASPER_SYSTEM_PROMPT },
-      ...(history || []).map(m => ({
+      ...(history || []).slice(0, -1).map(m => ({  // exclude last (just-inserted user msg)
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
     ]
 
-    // 4. Call GPT-4o
+    // Build the final user message — supports images via GPT-4o Vision
+    if (image_base64) {
+      const userParts: MsgContent = []
+      if (content?.trim()) userParts.push({ type: 'text', text: content.trim() })
+      userParts.push({
+        type: 'image_url',
+        image_url: { url: `data:${image_mime || 'image/jpeg'};base64,${image_base64}` },
+      })
+      chatMessages.push({ role: 'user', content: userParts })
+    } else {
+      chatMessages.push({ role: 'user', content: content.trim() })
+    }
+
+    // 4. Call GPT-4o (Vision if image attached)
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: chatMessages,
+      messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]['messages'],
       max_tokens: 600,
       temperature: 0.82,
     })

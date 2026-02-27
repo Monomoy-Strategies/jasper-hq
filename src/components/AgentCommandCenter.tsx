@@ -261,8 +261,8 @@ export function AgentCommandCenter() {
       .not('agent', 'is', null)
       .neq('status', 'completed')
       .order('updated_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) { setTasks(data as AgentTask[]); setLastUpdated(new Date()) }
+      .then(({ data }: { data: AgentTask[] | null }) => {
+        if (data) { setTasks(data); setLastUpdated(new Date()) }
       })
 
     // Realtime subscription
@@ -275,8 +275,8 @@ export function AgentCommandCenter() {
           .not('agent', 'is', null)
           .neq('status', 'completed')
           .order('updated_at', { ascending: false })
-          .then(({ data }) => {
-            if (data) { setTasks(data as AgentTask[]); setLastUpdated(new Date()) }
+          .then(({ data }: { data: AgentTask[] | null }) => {
+            if (data) { setTasks(data); setLastUpdated(new Date()) }
           })
         setLive(false); setTimeout(() => setLive(true), 400)
       })
