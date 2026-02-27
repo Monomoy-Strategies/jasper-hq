@@ -1,11 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
 
-// Excalidraw must be loaded client-side only
+// Excalidraw must be loaded client-side only — SSR will break it
 const ExcalidrawComponent = dynamic(
-  () => import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw })),
+  async () => {
+    const { Excalidraw } = await import('@excalidraw/excalidraw')
+    return { default: Excalidraw }
+  },
   {
     ssr: false,
     loading: () => (
@@ -20,22 +22,16 @@ const ExcalidrawComponent = dynamic(
 )
 
 export default function WhiteboardMode() {
-  const [isLoaded, setIsLoaded] = useState(false)
-
   return (
     <div className="flex flex-col h-full">
       {/* Info bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/50 bg-slate-900/50 text-xs text-slate-500">
         <span>🎨</span>
-        <span>Freeform whiteboard · Sketch, diagram, wireframe anything · Shift+drag to pan · Scroll to zoom</span>
+        <span>Freeform whiteboard · Sketch, diagram, wireframe anything · Scroll to zoom · Space+drag to pan</span>
         <span className="ml-auto text-slate-600">Powered by Excalidraw</span>
       </div>
 
-      <div
-        className="flex-1"
-        style={{ height: 'calc(100vh - 340px)', minHeight: '500px' }}
-        onLoad={() => setIsLoaded(true)}
-      >
+      <div className="flex-1" style={{ minHeight: '500px' }}>
         <ExcalidrawComponent
           theme="dark"
           UIOptions={{
