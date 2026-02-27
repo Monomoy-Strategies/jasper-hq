@@ -17,6 +17,7 @@ import {
   CostsTab,
   ApiHealthTab,
   ChatTab,
+  CanvasTab,
 } from '@/components/dashboard/tabs'
 
 interface DashboardData {
@@ -78,6 +79,8 @@ export default function Home() {
         return <AIBoardTab documents={data?.documents || []} />
       case 'bridge':
         return <BridgeTab />
+      case 'canvas':
+        return <CanvasTab />
       case 'marketing':
         return <MarketingTab />
       case 'fort':

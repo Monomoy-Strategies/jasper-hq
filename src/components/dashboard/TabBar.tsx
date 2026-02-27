@@ -1,6 +1,6 @@
 'use client'
 
-export type TabId = 'dashboard' | 'security' | 'tasks' | 'projects' | 'ai-board' | 'bridge' | 'costs' | 'apis' | 'marketing' | 'fort' | 'calendar' | 'ideas' | 'chat'
+export type TabId = 'dashboard' | 'security' | 'tasks' | 'projects' | 'ai-board' | 'bridge' | 'canvas' | 'costs' | 'apis' | 'marketing' | 'fort' | 'calendar' | 'ideas' | 'chat'
 
 export interface Tab {
   id: TabId
@@ -11,6 +11,7 @@ export interface Tab {
 export const TABS: Tab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
   { id: 'bridge', label: 'The Bridge', icon: '🌉' },
+  { id: 'canvas', label: 'Canvas', icon: '🧠' },
   { id: 'security', label: 'Security', icon: '🛡️' },
   { id: 'tasks', label: 'Tasks', icon: '📋' },
   { id: 'calendar', label: 'Calendar', icon: '📅' },
