@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 // ── Agent Definitions ──────────────────────────────────────────────────────────
 
@@ -137,23 +138,56 @@ const PRIORITY_BADGE: Record<string, string> = {
   P3: 'bg-slate-700/40 text-slate-300 border-slate-500/30',
 }
 
-// Legacy Supabase task type (for future live integration)
+// Supabase task type — matches actual agent_tasks table schema
 interface AgentTask {
   id: string
-  agent: string
-  status: string
-  priority: string
+  user_id: string
+  agent: string | null
   title: string
-  project: string | null
+  notes: string | null
+  status: string          // 'todo' | 'in_progress' | 'completed' | 'blocked'
+  priority: string        // 'low' | 'medium' | 'high' | 'critical'
+  assigned_by: string | null
+  tags: string[] | null   // e.g. ['GiftHQ', 'P1']
+  metadata: Record<string, unknown> | null
+  started_at: string | null
+  completed_at: string | null
+  due_date: string | null
   created_at: string
   updated_at: string
 }
 
+// Map DB status → display status
+function mapStatus(s: string): 'active' | 'queued' | 'idle' | 'blocked' {
+  if (s === 'in_progress') return 'active'
+  if (s === 'todo')        return 'queued'
+  if (s === 'blocked')     return 'blocked'
+  return 'idle'
+}
+
+// Map DB priority → P-label
+function mapPriority(p: string): 'P1' | 'P2' | 'P3' {
+  if (p === 'high')   return 'P1'
+  if (p === 'medium') return 'P2'
+  return 'P3'
+}
+
+// Get project from tags (first tag that isn't a P-level)
+function projectFromTags(tags: string[] | null): string {
+  return tags?.find(t => !t.match(/^P[123]$/)) ?? ''
+}
+
 // ── Sub-component: Agent Card ──────────────────────────────────────────────────
 
-function AgentCard({ agent }: { agent: AgentDef }) {
-  const assignment = CURRENT_ASSIGNMENTS[agent.id]
-  const status = assignment?.status ?? 'idle'
+function AgentCard({
+  agent,
+  status,
+  currentTask,
+}: {
+  agent: AgentDef
+  status: AgentStatus
+  currentTask: { task: string; project: string; priority: 'P1'|'P2'|'P3' } | null
+}) {
   const statusInfo = STATUS_CONFIG[status]
 
   return (
@@ -191,15 +225,15 @@ function AgentCard({ agent }: { agent: AgentDef }) {
         <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1 font-medium">
           {status === 'active' ? '▶ Running' : status === 'queued' ? '⏳ Up Next' : 'Assignment'}
         </p>
-        {assignment && status !== 'idle' ? (
+        {currentTask ? (
           <div className="space-y-1">
-            <p className="text-xs text-white font-medium leading-snug line-clamp-2">
-              {assignment.task}
-            </p>
+            <p className="text-xs text-white font-medium leading-snug line-clamp-2">{currentTask.task}</p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-slate-500 truncate">{assignment.project}</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_BADGE[assignment.priority]}`}>
-                {assignment.priority}
+              {currentTask.project && (
+                <span className="text-[10px] text-slate-500 truncate">{currentTask.project}</span>
+              )}
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_BADGE[currentTask.priority]}`}>
+                {currentTask.priority}
               </span>
             </div>
           </div>
@@ -214,13 +248,62 @@ function AgentCard({ agent }: { agent: AgentDef }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function AgentCommandCenter() {
-  const [lastUpdated] = useState<Date>(new Date())
+  const [tasks, setTasks] = useState<AgentTask[]>([])
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [live, setLive] = useState(true)
 
-  // Counts from static CURRENT_ASSIGNMENTS
-  const assignments = Object.values(CURRENT_ASSIGNMENTS)
-  const runningCount = assignments.filter(a => a.status === 'active').length
-  const queuedCount  = assignments.filter(a => a.status === 'queued').length
-  const blockedCount = assignments.filter(a => a.status === 'blocked').length
+  useEffect(() => {
+    if (!supabase) return
+    // Initial fetch
+    supabase
+      .from('agent_tasks')
+      .select('*')
+      .not('agent', 'is', null)
+      .neq('status', 'completed')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) { setTasks(data as AgentTask[]); setLastUpdated(new Date()) }
+      })
+
+    // Realtime subscription
+    const ch = supabase
+      .channel('agent_tasks_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_tasks' }, () => {
+        supabase
+          .from('agent_tasks')
+          .select('*')
+          .not('agent', 'is', null)
+          .neq('status', 'completed')
+          .order('updated_at', { ascending: false })
+          .then(({ data }) => {
+            if (data) { setTasks(data as AgentTask[]); setLastUpdated(new Date()) }
+          })
+        setLive(false); setTimeout(() => setLive(true), 400)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(ch) }
+  }, [])
+
+  // Per-agent: use DB tasks if available, else fall back to static CURRENT_ASSIGNMENTS
+  function getAgentStatus(agentId: string): AgentStatus {
+    const agentTasks = tasks.filter(t => t.agent === agentId)
+    if (agentTasks.length > 0) return mapStatus(agentTasks[0].status)
+    return CURRENT_ASSIGNMENTS[agentId]?.status ?? 'idle'
+  }
+
+  function getAgentTask(agentId: string): { task: string; project: string; priority: 'P1'|'P2'|'P3' } | null {
+    const t = tasks.find(t => t.agent === agentId)
+    if (t) return { task: t.title, project: projectFromTags(t.tags), priority: mapPriority(t.priority) }
+    const a = CURRENT_ASSIGNMENTS[agentId]
+    if (a && a.status !== 'idle') return { task: a.task, project: a.project, priority: a.priority }
+    return null
+  }
+
+  const allStatuses = AGENTS.map(a => getAgentStatus(a.id))
+  const runningCount = allStatuses.filter(s => s === 'active').length
+  const queuedCount  = allStatuses.filter(s => s === 'queued').length
+  const blockedCount = allStatuses.filter(s => s === 'blocked').length
 
   return (
     <div className="border border-slate-700/50 bg-slate-800/40 backdrop-blur rounded-lg p-5">
@@ -247,10 +330,10 @@ export function AgentCommandCenter() {
             </span>
           )}
 
-          {/* Last updated */}
+          {/* Live indicator */}
           <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            <span className={`w-2 h-2 rounded-full transition-all duration-300 ${live ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            {tasks.length > 0 ? 'Live' : 'Static'} · {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </div>
         </div>
       </div>
@@ -259,14 +342,19 @@ export function AgentCommandCenter() {
       {/* Agent Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {AGENTS.map(agent => (
-          <AgentCard key={agent.id} agent={agent} />
+          <AgentCard
+            key={agent.id}
+            agent={agent}
+            status={getAgentStatus(agent.id)}
+            currentTask={getAgentTask(agent.id)}
+          />
         ))}
       </div>
 
       {/* Footer */}
       <div className="mt-4 flex items-center justify-between text-[10px] text-slate-600">
-        <span>{runningCount} active · {queuedCount} queued · {blockedCount} blocked · {assignments.filter(a => a.status === 'idle').length} idle</span>
-        <span>Update assignments in AgentCommandCenter.tsx → CURRENT_ASSIGNMENTS</span>
+        <span>{runningCount} active · {queuedCount} queued · {blockedCount} blocked</span>
+        <span>{tasks.length > 0 ? `${tasks.length} tasks from Supabase` : 'Using static fallback'}</span>
       </div>
     </div>
   )
