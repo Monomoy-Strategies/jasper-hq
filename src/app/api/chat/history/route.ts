@@ -9,8 +9,9 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const since = searchParams.get('since') // message ID to poll from
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const chat_session_id = searchParams.get('chat_session_id')
+    const session_id = searchParams.get('session_id') || 'main'
+    const limit = parseInt(searchParams.get('limit') || '100')
 
     let query = supabase
       .from('jasper_chat')
@@ -18,26 +19,16 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(limit)
 
-    if (since) {
-      // Get messages created after the given message ID's timestamp
-      const { data: pivot } = await supabase
-        .from('jasper_chat')
-        .select('created_at')
-        .eq('id', since)
-        .single()
-
-      if (pivot) {
-        query = query.gte('created_at', pivot.created_at)
-      }
+    if (chat_session_id) {
+      query = query.eq('chat_session_id', chat_session_id)
+    } else {
+      query = query.eq('session_id', session_id)
     }
 
     const { data, error } = await query
-
     if (error) throw error
-
     return NextResponse.json({ messages: data || [] })
-  } catch (err: any) {
-    console.error('Chat history error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Error' }, { status: 500 })
   }
 }

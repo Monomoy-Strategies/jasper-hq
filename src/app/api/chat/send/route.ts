@@ -35,7 +35,7 @@ VOICE: Seasoned executive, practical, first-person, conversational. Never corpor
 
 export async function POST(req: NextRequest) {
   try {
-    const { content, session_id = 'main', image_base64, image_mime } = await req.json()
+    const { content, session_id = 'main', chat_session_id, image_base64, image_mime } = await req.json()
 
     if (!content?.trim() && !image_base64) {
       return NextResponse.json({ error: 'Content required' }, { status: 400 })
@@ -46,9 +46,10 @@ export async function POST(req: NextRequest) {
       .from('jasper_chat')
       .insert({
         role: 'user',
-        content: content.trim(),
+        content: content?.trim() || '',
         status: 'complete',
         session_id,
+        ...(chat_session_id ? { chat_session_id } : {}),
       })
       .select()
       .single()
@@ -56,12 +57,14 @@ export async function POST(req: NextRequest) {
     if (userErr) throw userErr
 
     // 2. Fetch recent conversation history for context (last 20 messages)
-    const { data: history } = await supabase
+    const historyQuery = supabase
       .from('jasper_chat')
       .select('role, content')
-      .eq('session_id', session_id)
       .order('created_at', { ascending: true })
       .limit(20)
+    if (chat_session_id) historyQuery.eq('chat_session_id', chat_session_id)
+    else historyQuery.eq('session_id', session_id)
+    const { data: history } = await historyQuery
 
     // 3. Build messages for GPT-4o
     type MsgContent = string | { type: string; text?: string; image_url?: { url: string } }[]
@@ -96,7 +99,10 @@ export async function POST(req: NextRequest) {
 
     const assistantContent = completion.choices[0].message.content || "Sorry, I couldn't generate a response."
 
-    // 5. Store assistant response
+    // 5. Store assistant response — also bump session updated_at
+    if (chat_session_id) {
+      await supabase.from('chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', chat_session_id)
+    }
     const { data: assistantMsg, error: assistantErr } = await supabase
       .from('jasper_chat')
       .insert({
@@ -104,6 +110,7 @@ export async function POST(req: NextRequest) {
         content: assistantContent,
         status: 'complete',
         session_id,
+        ...(chat_session_id ? { chat_session_id } : {}),
       })
       .select()
       .single()
