@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useEffect } from 'react'
 
 // Excalidraw must be loaded client-side only — SSR will break it
 const ExcalidrawComponent = dynamic(
@@ -22,6 +23,18 @@ const ExcalidrawComponent = dynamic(
 )
 
 export default function WhiteboardMode() {
+  // Load Excalidraw CSS as a static file — avoids Turbopack "style" export condition issue
+  useEffect(() => {
+    const id = 'excalidraw-css'
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      link.href = '/excalidraw.css'
+      document.head.appendChild(link)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col h-full">
       {/* Info bar */}

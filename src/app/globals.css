@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@excalidraw/excalidraw/index.css";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
