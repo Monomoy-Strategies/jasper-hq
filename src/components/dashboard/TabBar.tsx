@@ -10,6 +10,7 @@ export interface Tab {
 
 export const TABS: Tab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+  { id: 'chat', label: 'Chat', icon: '🦞' },
   { id: 'bridge', label: 'The Bridge', icon: '🌉' },
   { id: 'canvas', label: 'Canvas', icon: '🧠' },
   { id: 'security', label: 'Security', icon: '🛡️' },
@@ -22,7 +23,6 @@ export const TABS: Tab[] = [
   { id: 'costs', label: 'Costs', icon: '💰' },
   { id: 'apis', label: 'APIs', icon: '🔌' },
   { id: 'fort', label: 'The Fort', icon: '💪' },
-  { id: 'chat', label: 'Chat', icon: '🦞' },
 ]
 
 interface TabBarProps {
