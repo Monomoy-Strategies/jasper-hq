@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   ReactFlow,
   Background,
@@ -21,6 +21,15 @@ interface MapNode {
   type: 'root' | 'branch' | 'leaf'
   parent?: string
   notes?: string
+}
+
+interface SavedMap {
+  id: string
+  title: string
+  type: string
+  project: string | null
+  created_at: string
+  updated_at: string
 }
 
 const NODE_STYLES = {
@@ -75,7 +84,6 @@ function buildLayout(mapNodes: MapNode[]): { nodes: Node[]; edges: Edge[] } {
   const flowNodes: Node[] = []
   const flowEdges: Edge[] = []
 
-  // Root
   flowNodes.push({
     id: root.id,
     position: { x: CANVAS_CX, y: CANVAS_CY },
@@ -83,13 +91,11 @@ function buildLayout(mapNodes: MapNode[]): { nodes: Node[]; edges: Edge[] } {
     style: NODE_STYLES.root,
   })
 
-  // Layout branches and their leaves
   const BRANCH_X_OFFSET = 280
   const BRANCH_SPACING = 110
   const LEAF_X_OFFSET = 560
   const LEAF_SPACING = 60
 
-  // Total height of all branches
   const totalBranchH = (branches.length - 1) * BRANCH_SPACING
   const branchStartY = CANVAS_CY - totalBranchH / 2
 
@@ -150,11 +156,25 @@ export default function MindMapMode() {
   const [loading, setLoading] = useState(false)
   const [mapTitle, setMapTitle] = useState('')
   const [error, setError] = useState('')
+  const [currentMapId, setCurrentMapId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [savedMaps, setSavedMaps] = useState<SavedMap[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [lastRawNodes, setLastRawNodes] = useState<MapNode[]>([])
+
+  // Load saved maps list on mount
+  useEffect(() => {
+    fetch('/api/canvas/save')
+      .then(r => r.json())
+      .then(d => setSavedMaps(d.maps || []))
+      .catch(() => {})
+  }, [])
 
   const generate = useCallback(async () => {
     if (!prompt.trim() || loading) return
     setLoading(true)
     setError('')
+    setCurrentMapId(null)
     try {
       const res = await fetch('/api/canvas/generate', {
         method: 'POST',
@@ -169,6 +189,7 @@ export default function MindMapMode() {
       setNodes(flowNodes)
       setEdges(flowEdges)
       setMapTitle(data.title || prompt)
+      setLastRawNodes(data.nodes || [])
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
@@ -176,38 +197,135 @@ export default function MindMapMode() {
     }
   }, [prompt, loading, setNodes, setEdges])
 
+  const saveMap = useCallback(async () => {
+    if (!mapTitle || nodes.length === 0) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/canvas/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentMapId,
+          title: mapTitle,
+          type: 'mindmap',
+          data: { nodes: lastRawNodes, flowNodes: nodes, flowEdges: edges },
+          project: prompt,
+        }),
+      })
+      const d = await res.json()
+      if (d.map) {
+        setCurrentMapId(d.map.id)
+        // Refresh saved maps list
+        const listRes = await fetch('/api/canvas/save')
+        const listData = await listRes.json()
+        setSavedMaps(listData.maps || [])
+      }
+    } catch {}
+    setSaving(false)
+  }, [mapTitle, nodes, edges, lastRawNodes, currentMapId, prompt])
+
+  const loadMap = useCallback(async (mapId: string) => {
+    try {
+      const res = await fetch(`/api/canvas/load?id=${mapId}`)
+      const d = await res.json()
+      if (d.map?.data) {
+        const { flowNodes, flowEdges, nodes: rawNodes } = d.map.data
+        setNodes(flowNodes || [])
+        setEdges(flowEdges || [])
+        setMapTitle(d.map.title)
+        setPrompt(d.map.project || d.map.title)
+        setCurrentMapId(mapId)
+        setLastRawNodes(rawNodes || [])
+        setShowHistory(false)
+      }
+    } catch {}
+  }, [setNodes, setEdges])
+
+  const deleteMap = useCallback(async (mapId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    await fetch(`/api/canvas/load?id=${mapId}`, { method: 'DELETE' })
+    setSavedMaps(prev => prev.filter(m => m.id !== mapId))
+    if (currentMapId === mapId) setCurrentMapId(null)
+  }, [currentMapId])
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 p-4 border-b border-slate-700/50 bg-slate-900/50">
+      <div className="flex items-center gap-2 p-3 border-b border-slate-700/50 bg-slate-900/50">
         <input
           type="text"
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && generate()}
-          placeholder="Enter a project or topic — e.g. GiftHQ, The Helm Method, Q2 Marketing Strategy…"
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+          placeholder="Enter a project or topic — e.g. GiftHQ, The Helm Method, Q2 Marketing…"
+          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
         />
         <button
           onClick={generate}
           disabled={!prompt.trim() || loading}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
         >
           {loading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Mapping…
-            </>
+            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Mapping…</>
           ) : (
-            <><span>✨</span> Generate Map</>
+            <><span>✨</span>Generate</>
           )}
+        </button>
+
+        {/* Save button */}
+        {nodes.length > 0 && (
+          <button
+            onClick={saveMap}
+            disabled={saving}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            {saving ? '💾 Saving…' : currentMapId ? '💾 Update' : '💾 Save'}
+          </button>
+        )}
+
+        {/* History button */}
+        <button
+          onClick={() => setShowHistory(p => !p)}
+          className={`px-3 py-2 text-sm rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            showHistory ? 'bg-emerald-700 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+          }`}
+        >
+          📂 {savedMaps.length > 0 ? `${savedMaps.length} saved` : 'History'}
         </button>
       </div>
 
-      {error && (
-        <div className="mx-4 mt-3 px-4 py-2 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm">
-          {error}
+      {/* Saved maps panel */}
+      {showHistory && (
+        <div className="border-b border-slate-700/50 bg-slate-900/80 p-3">
+          {savedMaps.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-2">No saved maps yet — generate one and hit Save</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {savedMaps.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => loadMap(m.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all group ${
+                    currentMapId === m.id
+                      ? 'bg-emerald-700/30 border-emerald-600/50 text-emerald-300'
+                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white'
+                  }`}
+                >
+                  <span>🗺️</span>
+                  <span>{m.title}</span>
+                  <button
+                    onClick={(e) => deleteMap(m.id, e)}
+                    className="ml-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >×</button>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {error && (
+        <div className="mx-4 mt-3 px-4 py-2 bg-red-900/30 border border-red-700/50 rounded-lg text-red-300 text-sm">{error}</div>
       )}
 
       {/* Empty state */}
@@ -220,7 +338,7 @@ export default function MindMapMode() {
             {['GiftHQ', 'The Helm Method™', 'Q2 Marketing Plan', 'The Fort Strategy', 'Vortxx Features', 'AIDEN Product'].map(s => (
               <button
                 key={s}
-                onClick={() => { setPrompt(s); }}
+                onClick={() => setPrompt(s)}
                 className="px-3 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-lg text-slate-400 hover:text-slate-200 transition-all"
               >
                 {s}
@@ -230,11 +348,12 @@ export default function MindMapMode() {
         </div>
       )}
 
-      {/* Map title */}
+      {/* Map title bar */}
       {mapTitle && nodes.length > 0 && (
-        <div className="px-4 py-2 text-xs text-slate-500 border-b border-slate-800">
+        <div className="px-4 py-1.5 text-xs text-slate-500 border-b border-slate-800 flex items-center gap-2">
           <span className="text-emerald-400 font-medium">{mapTitle}</span>
-          <span className="ml-2">· {nodes.length} nodes · drag to rearrange · scroll to zoom</span>
+          <span>· {nodes.length} nodes · drag to rearrange · scroll to zoom</span>
+          {currentMapId && <span className="ml-auto text-emerald-600">✓ Saved</span>}
         </div>
       )}
 
